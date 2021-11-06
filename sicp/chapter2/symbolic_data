@@ -1,0 +1,446 @@
+#lang sicp
+
+(define (print x)
+  (display x)
+  (newline)
+  )
+
+(define (accumulate op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate op initial (cdr sequence)))))
+
+(define (square x)
+  (* x x)
+  )
+
+(define (fast-expt-iter b n a)
+  (cond ((= n 0) a)
+        ((even? n) (fast-expt-iter (square b) (/ n 2) a))
+        (else (fast-expt-iter b (- n 1) (* a b)))
+        )
+  )
+
+(define (expt x n)
+  (fast-expt-iter x n 1)
+  )
+
+(define (memq item x)
+  (cond ((null? x) false)
+        ((eq? item (car x)) x)
+        (else (memq item (cdr x)))))
+
+(define (equal? a b)
+  (cond
+    ((and (pair? a) (pair? b))
+     (and (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))
+    ((not (and (pair? a) (pair? b)))
+     (eq? a b))
+    (else #f)
+    )
+  )
+
+(define (=number? exp num)
+  (and (number? exp) (= exp num))
+  )
+
+(define (variable? x) (symbol? x))
+
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2))
+  )
+
+(define (make-sum a1 a2)
+  ;(print a1)
+  ;(print a2)
+  ;(newline)
+  (cond
+    ((=number? a1 0) a2)
+    ((=number? a2 0) a1)
+    ((and (number? a1) (number? a2)) (+ a1 a2))
+    (else (list a1 '+ a2))
+    )
+  )
+
+(define (sum? x) (and (pair? x) (eq? (cadr x) '+)))
+
+(define (addend s) (car s))
+
+(define (augend s)
+  ;(accumulate make-sum 0 (cddr s))
+  (if (> (length s) 3)
+      (cddr s)
+      (caddr s)
+      )
+  )
+
+(define (make-product m1 m2)
+  (cond
+    ((or (=number? m1 0) (=number? m2 0)) 0)
+    ((=number? m1 1) m2)
+    ((=number? m2 1) m1)
+    ((and (number? m1) (number? m2)) (* m1 m2))
+    (else (list m1 '* m2))
+    )
+  )
+
+(define (product? x) (and (pair? x) (eq? (cadr x) '*)))
+
+(define (multiplier p) (car p))
+
+(define (multiplicand p)
+  ;(accumulate make-product 1 (cddr p))
+  (if (> (length p) 3)
+      (cddr p)
+      (caddr p)
+      )
+  )
+
+(define (make-exponentiation base exponent)
+  (cond
+    ((=number? exponent 0) 1)
+    ((=number? exponent 1) base)
+    ((and (number? exponent) (> exponent 1) (number? base))
+     (expt base exponent))
+    (else
+     (list base '** exponent))
+    )
+  )
+
+(define (exponentiation? x) (and (pair? x) (eq? (cadr x) '**)))
+
+(define (base e) (car e))
+
+(define (exponent e)
+  ;(caddr e)
+  (if (> (length e) 3)
+      (cddr e)
+      (caddr e)
+      )
+  )
+
+(define (deriv exp var)
+  (print exp)
+  ;(newline)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var) 1 0))
+        ((sum? exp) (make-sum (deriv (addend exp) var)
+                              (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+          (make-product (multiplier exp)
+                        (deriv (multiplicand exp) var))
+          (make-product (deriv (multiplier exp) var)
+                        (multiplicand exp))))
+        ((exponentiation? exp)
+         (make-product (make-product (exponent exp)
+                                     (make-exponentiation (base exp)
+                                                          (- (exponent exp) 1)))
+                       (deriv (base exp) var)))
+        (else
+         (error "unknown expression type: DERIV" exp))))
+
+(define s '(x + (5 + x)))
+(define snp '(x + 5 + x))
+
+
+; sets
+
+(define (element-of-setu? x set)
+  (cond ((null? set) false)
+        ((equal? x (car set)) true)
+        (else (element-of-setu? x (cdr set)))))
+
+(define (adjoin-setu x set)
+  (if (element-of-setu? x set)
+      set
+      (cons x set)))
+
+(define (intersection-setu set1 set2)
+  (cond ((or (null? set1) (null? set2)) '())
+        ((element-of-setu? (car set1) set2)
+         (cons (car set1) (intersection-setu (cdr set1) set2)))
+        (else (intersection-setu (cdr set1) set2))))
+
+(define (union-setu set1 set2)
+  (cond
+    ((null? set1) set2)
+    ((null? set2) set1)
+    ((not (element-of-setu? (car set1) set2))
+     (cons (car set1) (union-setu (cdr set1) set2)))
+    (else (union-setu (cdr set1) set2))
+    )
+  )
+
+(define (element-of-seto? x set)
+  (cond ((null? set) false)
+        ((= x (car set)) true)
+        ((< x (car set)) false)
+        (else (element-of-seto? x (cdr set)))))
+
+(define (intersection-seto set1 set2)
+  (if (or (null? set1) (null? set2))
+      '()
+      (let ((x1 (car set1)) (x2 (car set2)))
+        (cond ((= x1 x2)
+               (cons x1 (intersection-seto (cdr set1)
+                                           (cdr set2))))
+              ((< x1 x2)
+               (intersection-seto (cdr set1) set2))
+              ((< x2 x1)
+               (intersection-seto set1 (cdr set2)))))))
+
+(define (adjoin-seto x set)
+  (cond
+    ((null? x) set)
+    ((null? set) (cons x nil))
+    ((> x (car set)) (cons (car set) (adjoin-seto x (cdr set))))
+    ((= x (car set)) set)
+    (else (cons x set))
+    )
+  )
+
+(define (union-seto set1 set2)
+  (cond
+    ((null? set1) set2)
+    ((null? set2) set1)
+    (else
+     (let (
+           (x1 (car set1)) (x2 (car set2))
+                           )
+       (cond
+         ((= x1 x2) (cons x1 (union-seto (cdr set1) (cdr set2))))
+         ((< x1 x2) (cons x1 (union-seto (cdr set1) set2)))
+         ((> x1 x2) (cons x2 (union-seto set1 (cdr set2))))
+         )
+       )
+     )
+    )
+  )
+
+
+; binary trees
+
+(define (entry tree) (car tree))
+
+(define (left-branch tree) (cadr tree))
+
+(define (right-branch tree) (caddr tree))
+
+(define (make-tree entry left right)
+  (list entry left right))
+
+(define (element-of-sett? x set)
+  (cond ((null? set) false)
+        ((= x (entry set)) true)
+        ((< x (entry set))
+         (element-of-sett? x (left-branch set)))
+        ((> x (entry set))
+         (element-of-sett? x (right-branch set)))))
+
+(define (adjoin-sett x set)
+  (cond ((null? set) (make-tree x '() '()))
+        ((= x (entry set)) set)
+        ((< x (entry set))
+         (make-tree (entry set)
+                    (adjoin-sett x (left-branch set))
+                    (right-branch set)))
+        ((> x (entry set))
+         (make-tree (entry set) (left-branch set)
+                    (adjoin-sett x (right-branch set))))))
+
+; 2.63
+(define (tree->list-1 tree)
+  (if (null? tree)
+      '()
+      (append (tree->list-1 (left-branch tree))
+              (cons (entry tree)
+                    (tree->list-1 (right-branch tree)))
+              )
+      )
+  )
+
+(define (tree->list-2 tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (left-branch tree)
+                      (cons (entry tree)
+                            (copy-to-list
+                             (right-branch tree)
+                             result-list)))))
+  (copy-to-list tree '()))
+
+(define bt (make-tree 7 (make-tree 3 (make-tree 1 nil nil) (make-tree 5 nil nil)) (make-tree 9 nil (make-tree 11 nil nil))))
+(define ubtr (make-tree 1 nil (make-tree 2 nil (make-tree 3 nil (make-tree 4 nil (make-tree 5 nil (make-tree 6 nil (make-tree 7 nil nil))))))))
+(define t1 (make-tree 3 (make-tree 1 nil nil) (make-tree 7 (make-tree 5 nil nil) (make-tree 9 nil (make-tree 11 nil nil)))))
+(define t2 (make-tree 5 (make-tree 3 (make-tree 1 nil nil) nil) (make-tree 9 (make-tree 7 nil nil) (make-tree 11 nil nil))))
+(define ubtl (make-tree 7 (make-tree 6 (make-tree 5 (make-tree 4 (make-tree 3 (make-tree 2 (make-tree 1 nil nil) nil) nil) nil) nil) nil) nil))
+
+(define (list->tree elements)
+  (car (partial-tree elements (length elements)))
+  ;(partial-tree elements 3)
+  )
+
+;2.64
+(define (partial-tree elts n)
+  (newline)
+  (display "n: ")
+  (print n)
+  (display "elts: ")
+  (print elts)
+  
+  (if (= n 0)
+      (cons '() elts)
+      (let (
+            (left-size (quotient (- n 1) 2))
+            )
+
+        (display "(n:")
+        (display n)
+        (display ") ")
+        (display "left-size: ")
+        (print left-size)
+        
+        (let (
+              (left-result
+               (partial-tree elts left-size))
+              )
+
+          (display "(n:")
+          (display n)
+          (display ") ")
+          (display "left-result: ")
+          (print left-result)
+          
+          (let (
+                (left-tree (car left-result))
+                (non-left-elts (cdr left-result))
+                (right-size (- n (+ left-size 1))) ; right = n - left - 1 (1 is entry node) 
+                )
+
+            (display "(n:")
+            (display n)
+            (display ") ")
+            (display "left-tree: ")
+            (print left-tree)
+            (display "(n:")
+            (display n)
+            (display ") ")
+            (display "non-left-elts: ")
+            (print non-left-elts)
+            (display "(n:")
+            (display n)
+            (display ") ")
+            (display "right-size: ")
+            (print right-size)
+            
+            (let (
+                  (this-entry (car non-left-elts)) ; node entry is the first of nonleft
+                  (right-result
+                   (partial-tree
+                    (cdr non-left-elts) ; right branch is [1:] of nonleft
+                    right-size))
+                  )
+
+              (display "(n:")
+              (display n)
+              (display ") ")
+              (display "this-entry: ")
+              (print this-entry)
+              (display "(n:")
+              (display n)
+              (display ") ")
+              (display "right-result: ")
+              (print right-result)
+              
+              (let (
+                    (right-tree (car right-result))
+                    (remaining-elts
+                     (cdr right-result))
+                    )
+
+                (display "(n:")
+                (display n)
+                (display ") ")
+                (display "right-tree: ")
+                (print right-tree)
+                (display "(n:")
+                (display n)
+                (display ") ")
+                (display "remaining-elts: ")
+                (print remaining-elts)
+                
+                (cons (make-tree this-entry
+                                 left-tree
+                                 right-tree)
+                      remaining-elts)
+                )
+              )
+            )
+          )
+        )
+      )
+  )
+
+(define lst (list 1 2 3 4 5 6))
+
+;2.65
+(define (union-sett tree1 tree2)
+  (cond
+    ((null? tree1) tree2)
+    ((null? tree2) tree1)
+    (else
+     (let (
+           (lst1 (tree->list-1 tree1))
+           (lst2 (tree->list-1 tree2))
+           )
+       (let (
+             (lst-union (union-seto lst1 lst2))
+             )
+         (list->tree lst-union)
+         )
+       )
+     )
+    )
+  )
+
+
+(define (intersection-sett tree1 tree2)
+  (cond
+    ((null? tree1) '())
+    ((null? tree2) '())
+    (else
+     (let (
+           (lst1 (tree->list-1 tree1))
+           (lst2 (tree->list-1 tree2))
+           )
+       (let (
+             (lst-intersection (intersection-seto lst1 lst2))
+             )
+         (list->tree lst-intersection)
+         )
+       )
+     )
+    )
+  )
+
+(define tree1 (list->tree (list 1 3 5 7 9 11)))
+(define tree2 (list->tree (list 3 4 6 9 11 21)))
+
+
+(define (lookup given-key set-of-records)
+  (cond ((null? set-of-records) false)
+        ((equal? given-key (key (car set-of-records)))
+         (car set-of-records))
+        (else (lookup given-key (cdr set-of-records)))))
+
+; 2.66
+(define (lookup-key-bt given-key tree)
+  (cond ((null? tree) false)
+        ((equal? given-key (key (entry tree))) (entry tree))
+        ((< given-key (key (entry tree))) (lookup-key-bt given-key (left-branch tree)))
+        ((> given-key (key (entry tree))) (lookup-key-bt given-key (right-branch tree)))
+        )
+  )

@@ -1,0 +1,35 @@
+#lang sicp
+(define (fib n)
+  (cond ((< n 2) n)
+        (else (+ (fib (- n 1)) (fib (- n 2))))
+        )
+  )
+
+(define (count-change amount) (cc amount 5))
+(define (cc amount kinds-of-coins)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0) (= kinds-of-coins 0)) 0)
+        (else (+ (cc amount
+                     (- kinds-of-coins 1))
+                 (cc (- amount
+                        (first-denomination
+                         kinds-of-coins))
+                     kinds-of-coins)))))
+(define (first-denomination kinds-of-coins)
+  (cond ((= kinds-of-coins 1) 1)
+        ((= kinds-of-coins 2) 5)
+        ((= kinds-of-coins 3) 10)
+        ((= kinds-of-coins 4) 25)
+        ((= kinds-of-coins 5) 50)))
+
+
+(define (fi n)
+  (f-iter 2 1 0 n)
+  )
+
+(define (f-iter a b c n)
+  (cond ((= n 0) c)
+        (else (f-iter (+ a (* 2 b) (* 3 c)) a b (- n 1)))
+        )
+  )
+

@@ -1,0 +1,56 @@
+#lang sicp
+
+(define (cont-frac combiner get-n get-d k)
+
+  (define (rec i)
+    (if (> i k) 0
+        (/ (get-n i) (combiner (get-d i) (rec (+ i 1))))
+        )
+    )
+
+  (rec 1)
+  
+  )
+
+(define (cont-frac-iter combiner get-n get-d k)
+
+  (define (iter result i)
+    (if (= i 1) result
+        (iter (/ (get-n (- k 1)) (combiner (get-d (- k 1)) result)) (- i 1))
+        )
+    )
+
+  (iter (/ (get-n k) (get-d k)) k)
+  
+  )
+
+(define (add x y) (+ x y))
+
+; approximate e - 2
+(define e-minus-2
+  (cont-frac add (lambda (x) 1.0)
+             (lambda (x) (if (= (remainder x 3) 2) (- x (- x (remainder x 3)))
+                             1.0
+                             )
+               )
+             1000
+
+             )
+  )
+
+(display "e ~ ")
+(display (+ e-minus-2 2))
+(newline)
+
+; approximate tan
+(define (tan-cf x k)
+  (cont-frac (lambda (x y) (- x y))
+             (lambda (k)
+               (if (= k 1) x 
+                   (* x x)
+                   )
+               )
+             (lambda (k) (- (* k 2) 1))
+             k
+             )
+  )

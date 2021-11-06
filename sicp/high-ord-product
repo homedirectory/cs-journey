@@ -1,0 +1,34 @@
+#lang sicp
+
+(define (product term a next b)
+  
+  (define (iter a result)
+    (if (> a b) result
+     (iter (next a) (* result (term a)) )
+     )
+    )
+  
+  (iter a 1)
+  )
+
+(define (product-rec term a next b)
+
+  (if (> a b) 1
+      (* (term a) (product-rec term (next a) next b))
+      )
+  
+  )
+
+(define (wallis-pi n)
+
+  (define (wpi-term x)
+    (* (/ x (- x 1)) (/ x (+ x 1)))
+    )
+
+  (define (wpi-next x)
+    (+ x 2)
+    )
+
+  (* 2 (product wpi-term 2 wpi-next n))
+  
+  )

@@ -1,0 +1,82 @@
+#lang sicp
+
+(define (even? n)
+  (= (remainder n 2) 0))
+
+(define (square x)
+  (* x x)
+  )
+
+(define (fast-expt-iter b n a)
+  (cond ((= n 0) a)
+        ((even? n) (fast-expt-iter (square b) (/ n 2) a))
+        (else (fast-expt-iter b (- n 1) (* a b)))
+        )
+  )
+
+(define (expt x n)
+  (fast-expt-iter x n 1)
+  )
+
+(define (cons a b)
+  (* (expt 2 a) (expt 3 b))
+  )
+
+(define (car z)
+
+  (define (iter x count)
+    (if (= (remainder x 2) 0)
+        (iter (/ x 2) (+ count 1))
+        count
+        )
+    )
+  (iter z 0)
+  )
+
+(define (cdr z)
+
+  (define (iter x count)
+    (if (= (remainder x 3) 0)
+        (iter (/ x 3) (+ count 1))
+        count
+        )
+    )
+  (iter z 0)
+  
+  )
+
+(define zero
+  (lambda (f) (lambda (x) x))
+  )
+
+(define (add-1 n)
+  (lambda (f)
+    (lambda (x)
+      (f ((n f) x))
+      )
+    )
+  )
+
+(define one
+  (lambda (f)
+    (lambda (x)
+      (f x)
+      )
+    )
+  )
+
+(define two
+  (lambda (f)
+    (lambda (x)
+      (f (f x))
+      )
+    )
+  )
+
+(define (add n1 n2)
+  (lambda (f)
+    (lambda (x)
+      ((n1 f) ((n2 f) x))
+      )
+    )
+  )

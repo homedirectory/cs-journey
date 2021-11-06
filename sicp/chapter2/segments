@@ -1,0 +1,108 @@
+#lang sicp
+
+(define (square x) (* x x))
+
+(define (make-segment sp ep)
+  (cons sp ep)
+  )
+
+(define (start-segment s)
+  (car s)
+  )
+
+(define (end-segment s)
+  (cdr s)
+  )
+
+(define (len-segment s)
+  (let (
+        (es (end-segment s))
+        (ss (start-segment s))
+        )
+    (sqrt
+     (+
+      (square
+       (-
+        (x-point es)
+        (x-point ss)
+        )
+       )
+      (square
+       (-
+        (y-point es)
+        (y-point ss)
+        )
+       )
+      )
+     )
+    )
+  )
+
+(define (make-point x y)
+  (cons x y)
+  )
+
+(define (x-point p)
+  (car p)
+  )
+
+(define (y-point p)
+  (cdr p)
+  )
+
+(define (midpoint-segment s)
+  (let (
+        (ss (start-segment s))
+        (es (end-segment s))
+        )
+    (make-point
+     (/ (+ (x-point ss) (x-point es)) 2)
+     (/ (+ (y-point ss) (y-point es)) 2)
+     )
+    )
+  )
+
+(define (print-point p)
+  (newline)
+  (display "(")
+  (display (x-point p))
+  (display ",")
+  (display (y-point p))
+  (display ")")
+  )
+
+(define (make-rec p1 p2 p3 p4)
+  (cond
+    (
+     (and (not (= (x-point p1) (x-point p2))) (not (= (y-point p1) (y-point p2))))
+     (cons (make-segment p1 p3) (make-segment p1 p4))
+     )
+    (
+     (and (not (= (x-point p1) (x-point p3))) (not (= (y-point p1) (y-point p3))))
+     (cons (make-segment p1 p2) (make-segment p1 p4))
+     )
+    (else
+     (cons (make-segment p1 p3) (make-segment p1 p2))
+     )
+    )
+  )
+
+(define (s1-rec rec)
+  (car rec)
+  )
+
+(define (s2-rec rec)
+  (cdr rec)
+  )
+
+(define (perimeter-rec rec)
+  (* 2 (+ (len-segment (s1-rec resc)) (len-segment (s2-rec rec))))
+  )
+
+(define (area-rec rec)
+  (* (len-segment (s1-rec rec)) (len-segment (s2-rec rec)))
+  )
+
+
+
+

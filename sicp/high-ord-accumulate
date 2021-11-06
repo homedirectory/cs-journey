@@ -1,0 +1,37 @@
+#lang sicp
+(define (i x) x)
+
+
+(define (accumulate combiner null-value term a next b)
+
+  (if (> a b) null-value
+      (combiner (term a) (accumulate combiner null-value term (next a) next b))
+      )
+  
+  )
+
+(define (accumulate-iter combiner null-value term a next b)
+
+  (define (iter x result)
+    (if (> x b) result
+        (iter (next x) (combiner result x))
+        )
+    )
+
+  (iter a null-value)
+  )
+
+(define (sum a b)
+
+  (define (sum-combiner x y) (+ x y))
+  
+  (accumulate-iter sum-combiner 0 i a inc b)
+  )
+
+(define (product a b)
+
+  (define (prod-combiner x y) (* x y))
+
+  (accumulate-iter prod-combiner 1 i a inc b)
+
+  )

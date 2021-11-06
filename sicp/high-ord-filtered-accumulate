@@ -1,0 +1,65 @@
+#lang sicp
+
+(define (square x) (* x x))
+
+(define (next x)
+  (cond ((= x 2) 3)
+        (else (+ x 2))
+        )
+  )
+
+(define (gcd a b)
+  (if (= b 0)
+      a
+      (gcd b (remainder a b))))
+
+(define (smallest-divisor n) (find-divisor n 2))
+
+(define (find-divisor n test-divisor)
+  (cond ((> (square test-divisor) n) n)
+        ((divides? test-divisor n) test-divisor)
+        (else (find-divisor n (next test-divisor)))))
+
+(define (divides? a b) (= (remainder b a) 0))
+
+(define (prime? n)
+  (= n (smallest-divisor n))
+  )
+
+(define (filtered-accumulate filter combiner null-value term a next b)
+
+  (define (iter x result)
+    (if (> x b) result
+        (if (filter x) (iter (next x) (combiner result x))
+            (iter (next x) result)
+            )
+        
+        )
+    )
+
+  (iter a null-value)
+  )
+
+(define (sum-primes a b)
+
+  (define (sum-combiner x y) (+ x y))
+
+  (define (i x) x)
+  
+  (filtered-accumulate prime? sum-combiner 0 i a inc b)
+  
+  )
+
+(define (prod-rel-prime n)
+
+  (define (comb x y) (* x y))
+
+  (define (i x) x)
+
+  (define (filter x)
+    (= (gcd x n) 1)
+    )
+
+  (filtered-accumulate filter comb 1 i 1 inc (- n 1))
+  
+  )
