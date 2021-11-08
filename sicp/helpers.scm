@@ -1,6 +1,18 @@
 ; helper DSL to make implementation and representation of exercises more
 ; enjoyable
+#lang sicp
 
-(define (output . to-print)
-  (map (lambda (x) (display x) (newline)) to-print))
+(define (print . args)
 
+  (define (pprint args-list)
+    (if (null? args-list)
+      (newline)
+      (and (display (car args-list))
+       (pprint (cdr args-list)))
+      )
+    )
+
+  (pprint args)
+  )
+
+(#%provide print)
