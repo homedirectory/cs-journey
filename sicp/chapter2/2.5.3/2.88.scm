@@ -16,11 +16,16 @@
   )
 
 ;; negate each term's coeff
+(define (neg-term term)
+  (make-term (order term) (neg (coeff term)))
+  )
+
 (define (neg-poly p)
-  (let ((terms (term-list p)))
-    (map
-     (lambda (x) (make-term (order x) (neg (coeff x))))
-     terms)
+  (let (
+        (terms (term-list p))
+        (var (variable p))
+        )
+    (make-poly var (map neg-term terms))
     )
   )
 
@@ -29,7 +34,12 @@
   (add-poly p1 (neg-poly p2))
   )
 
-;; addition to the polynomial package
-(put 'sub '(polynomial polynomial)
-     (lambda (p1 p2) (tag (sub-poly p1 p2))))
+(define (sub-terms L1 L2)
+  (add-terms L1 (neg-terms
+                 )
 
+             ;; addition to the polynomial package
+             (put 'sub '(polynomial polynomial)
+                  (lambda (p1 p2) (tag (sub-poly p1 p2))))
+
+             
