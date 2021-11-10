@@ -55,3 +55,5 @@
         )
       )
   )
+
+(#%provide div-poly div-terms)
