@@ -15,4 +15,6 @@
   (pprint args)
   )
 
-(#%provide print)
+(define (square x) (* x x))
+
+(#%provide print square)
