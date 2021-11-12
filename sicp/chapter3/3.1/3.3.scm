@@ -52,3 +52,5 @@
 
   ;  pass-protect
   )
+
+(#%provide make-account)
