@@ -31,6 +31,7 @@
               false)
           )
         )
+      
       (if (pair? keys)
           (lookup-keys local-table keys)
           (lookup-keys local-table (list keys))
@@ -43,7 +44,7 @@
           (if record
               (if (= (length keyz) 1)
                   (set-cdr! record value)
-                  (insert-keys! (cdr record) (cdr keyz))
+                  (insert-keys! record (cdr keyz))
                   )
               (if (= (length keyz) 1)
                   (set-cdr! table (cons (cons (car keyz) value) (cdr table)))
@@ -51,12 +52,13 @@
                     ;; create new table
                     (set-cdr! table (cons (cons (car keyz) '()) (cdr table)))
                     ;; insert into the new table
-                    (insert-keys! (cdr table) (cdr keyz))
+                    (insert-keys! (cadr table) (cdr keyz))
                     )
                   )
               )
           )
         )
+      
       (if (pair? keys)
           (insert-keys! local-table keys)
           (insert-keys! local-table (list keys))
@@ -81,4 +83,12 @@
 ((t 'lookup) 'b)
 ((t 'insert!) (list 'x 'y) 20)
 ((t 'lookup) (list 'x 'y))
-
+((t 'insert!) (list 'x 'z) 10)
+((t 'lookup) (list 'x 'z))
+((t 'lookup) 'x)
+((t 'insert!) 'math nil)
+((t 'lookup) 'math)
+((t 'insert!) (list 'math '+) 43)
+((t 'insert!) (list 'math '-) 45)
+((t 'insert!) (list 'math '*) 42)
+((t 'lookup) 'math)
