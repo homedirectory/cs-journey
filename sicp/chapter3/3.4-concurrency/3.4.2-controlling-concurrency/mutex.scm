@@ -41,7 +41,8 @@
 
 ;------------------------------------------------
 
-(#%provide make-mutex mutex-acquire mutex-release mutex-locked? test-and-set!)
+(#%provide make-mutex mutex-acquire mutex-release mutex-locked? test-and-set!
+           clear!)
 
 ;; TEST
 ;(define mut (make-mutex))
