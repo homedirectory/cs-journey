@@ -30,7 +30,9 @@
 ; * Defining streams implicitly *
 (define ones (cons-stream 1 ones))
 
-(define (add-streams s1 s2) (stream-map + s1 s2))
+(define (add-streams . argstreams)
+  (apply stream-map (cons + argstreams))
+  )
 
 (define integers-impl (cons-stream 1 (add-streams ones integers)))
 
@@ -69,4 +71,4 @@
   )
 
 ;-------------------------------------------------
-(#%provide add-streams scale-stream)
+(#%provide add-streams scale-stream integers)
