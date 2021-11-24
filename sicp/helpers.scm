@@ -6,10 +6,10 @@
 
   (define (pprint args-list)
     (if (null? args-list)
-      (newline)
-      (and (display (car args-list))
-       (pprint (cdr args-list)))
-      )
+        (newline)
+        (and (display (car args-list))
+             (pprint (cdr args-list)))
+        )
     )
 
   (pprint args)
@@ -17,4 +17,31 @@
 
 (define (square x) (* x x))
 
-(#%provide print square)
+(define (sum args)
+  (define (f lst s)
+    (if (null? lst)
+        s
+        (f (cdr lst) (+ s (car lst)))
+        )
+    )
+  (f args 0)
+  )
+
+(define (average . args)
+  (/ (sum args) (length args))
+  )
+
+
+; pow
+(define (fast-expt-iter b n a)
+  (cond ((= n 0) a)
+        ((even? n) (fast-expt-iter (square b) (/ n 2) a))
+        (else (fast-expt-iter b (- n 1) (* a b)))
+        )
+  )
+
+(define (expt x n)
+  (fast-expt-iter x n 1)
+  )
+
+(#%provide print square average sum expt)
