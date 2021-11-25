@@ -25,7 +25,7 @@
       )
   )
 
-; Pairs of the form (i, j) of all integers, where i <= j
+
 (define (pairs s t)
   (cons-stream
    (list (stream-car s) (stream-car t))
@@ -37,6 +37,7 @@
    )
   )
 
+; Pairs of the form (i, j) of all integers, where i <= j
 (define int-pairs (pairs integers integers))
 
 
@@ -74,3 +75,7 @@
 ; the pair (100, 100)?
 ;(pair-index 100 100)
 ; 1267650600228229401496703205375 - 1
+
+;---------------------------------------------
+
+(#%provide interleave pairs)
