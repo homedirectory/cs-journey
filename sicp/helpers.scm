@@ -40,8 +40,16 @@
         )
   )
 
+
 (define (expt x n)
   (fast-expt-iter x n 1)
   )
 
-(#%provide print square average sum expt)
+
+(define (divisible? x y)
+  (= (remainder x y) 0)
+  )
+
+;---------------------------------------------
+ 
+(#%provide print square average sum expt divisible?)
