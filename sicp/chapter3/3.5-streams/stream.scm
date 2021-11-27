@@ -228,9 +228,16 @@
   (f stream (list) 0)
   )
 
+(define (list->stream lst)
+  (if (null? lst)
+      the-empty-stream
+      (cons-stream (car lst) (list->stream (cdr lst)))
+      )
+  )
+
 ;-------------------------------------------------
 (#%provide the-empty-stream stream-null? cons-stream stream-car stream-cdr
            stream-ref stream-map stream-filter stream-for-each
            stream-enumerate-interval display-stream print-stream
            merge mul-streams stream-neg add-streams scale-stream integers
-           partial-sums stream->list)
+           partial-sums stream->list list->stream)

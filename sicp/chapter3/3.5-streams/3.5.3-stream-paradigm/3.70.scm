@@ -22,6 +22,8 @@
 ;--------------------------------------------------------------------
 
 (define (merge-weighted s1 s2 weight)
+  ;  (newline)
+  ;  (print "merge: " s1 s2)
   (cond
     ((stream-null? s1) s2)
     ((stream-null? s2) s1)
@@ -29,7 +31,7 @@
      (let ((s1car (stream-car s1))
            (s2car (stream-car s2)))
        (cond
-         ((< (weight s1car) (weight s2car))
+         ((<= (weight s1car) (weight s2car))
           (cons-stream
            s1car
            (merge-weighted (stream-cdr s1) s2 weight))
@@ -38,12 +40,6 @@
           (cons-stream
            s2car
            (merge-weighted s1 (stream-cdr s2) weight))
-          )
-         (else
-          (cons-stream
-           s1car
-           (merge-weighted (stream-cdr s1)
-                           (stream-cdr s2) weight))
           )
          )
        )
@@ -69,8 +65,6 @@
 ; a. the stream of all pairs of positive integers (i, j) with
 ;i ≤ j ordered according to the sum i + j,
 (define (sum p)
-  (newline)
-  (print "p: " p)
   (+ (car p) (cadr p))
   )
 (define stream-a (weighted-pairs integers integers sum))
@@ -78,3 +72,32 @@
 ; b. the stream of all pairs of positive integers (i, j) with
 ;i ≤ j, where neither i nor j is divisible by 2, 3, or 5, and
 ;the pairs are ordered according to the sum 2i + 3j + 5ij.
+(define (filter-b pair)
+  (let ((i (car pair))
+        (j (cadr pair)))
+    (and
+     (not (divisible? i 2))
+     (not (divisible? j 2))
+     (not (divisible? i 3))
+     (not (divisible? j 3))
+     (not (divisible? i 5))
+     (not (divisible? j 5))
+     )
+    )
+  )
+
+(define (order-b pair)
+  (let ((i (car pair))
+        (j (cadr pair)))
+    (+ (* 2 i) (* 3 j) (* 5 i j))
+    )
+  )
+
+(define stream-b (stream-filter filter-b
+                  (weighted-pairs integers integers order-b)))
+
+
+
+;-----------------------------------------------------------
+(#%provide weighted-pairs)
+
