@@ -18,15 +18,23 @@
 
 ;---------------------------------------------------------------
 
-(define (integral integrand initial-value dt)
+(define (integral delayed-integrand initial-value dt)
+;  (print "delayed-integrand: " delayed-integrand)
+;  (print "y0 :" initial-value)
   (cons-stream
    initial-value
-   (if (stream-null? integrand)
+   (if (stream-null? delayed-integrand)
        the-empty-stream
-       (integral (delay (stream-cdr integrand))
-                 (+ (* dt (stream-car (force integrand)))
-                    initial-value)
-                 dt)
+       (begin
+         (let ((integrand (force delayed-integrand)))
+;           (print "integrand: " integrand)
+;           (newline)
+           (integral (delay (stream-cdr integrand))
+                     (+ (* dt (stream-car integrand))
+                        initial-value)
+                     dt)
+           )
+         )
        )
    )
   )
@@ -45,3 +53,5 @@
      )
    )
   )
+
+(define a (solve (lambda (y) y) 1 0.001))

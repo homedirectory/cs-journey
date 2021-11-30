@@ -31,4 +31,4 @@
   )
 
 ;--------------------------------------------
-(#%provide solve)
+(#%provide solve integral)

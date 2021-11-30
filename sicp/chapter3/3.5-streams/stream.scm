@@ -235,9 +235,14 @@
       )
   )
 
+
+(define (stream-from-proc proc)
+    (cons-stream (proc) (stream-from-proc proc))
+  )
+
 ;-------------------------------------------------
 (#%provide the-empty-stream stream-null? cons-stream stream-car stream-cdr
            stream-ref stream-map stream-filter stream-for-each
            stream-enumerate-interval display-stream print-stream
            merge mul-streams stream-neg add-streams scale-stream integers
-           partial-sums stream->list list->stream)
+           partial-sums stream->list list->stream stream-from-proc)
