@@ -160,6 +160,10 @@
 (define (no-operands? ops) (null? ops))
 (define (first-operand ops) (car ops))
 (define (rest-operands ops) (cdr ops))
+; from Exercise 4.5
+(define (make-application operator operands)
+  (cons operator operands)
+  )
 
 
 ; cond can be written in terms of nested if else clauses.
@@ -186,6 +190,7 @@
                      (expand-clauses rest))))))
 
 
+
 ;-----------------------------------------------------------------------------------
 (#%provide eval apply list-of-values eval-if eval-sequence eval-assignment
            eval-definition self-evaluating? variable? quoted? text-of-quotation
@@ -195,4 +200,4 @@
            if-alternative make-if begin? begin-actions last-exp? first-exp rest-exps
            make-begin sequence-exp application? operator operands first-operand
            rest-operands cond? cond-clauses cond-else-clause? cond-predicate
-           cond-actions cond->if expand-clauses)
+           cond-actions cond->if expand-clauses make-application)
