@@ -6,7 +6,7 @@
 ;clauses, (⟨test⟩ => ⟨recipient⟩). If ⟨test ⟩ evaluates to a
 ;true value, then ⟨recipient ⟩ is evaluated. Its value must be a
 ;procedure of one argument; this procedure is then invoked
-;on the value of the ⟨test ⟩, and the result is returned as the
+;on the value of the ⟨test⟩, and the result is returned as the
 ;value of the cond expression. For example
 ;(cond ((assoc 'b '((a 1) (b 2))) => cadr)
 ;      (else false))

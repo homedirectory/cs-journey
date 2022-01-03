@@ -18,6 +18,10 @@
         ((application? exp)
          (apply (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
+        ((let? exp)
+         (eval (let->combination exp) env))
+        ((let*? exp)
+         (eval (let*->nested-lest exp) env))
         (else
          (error "Unknown expression type: EVAL" exp))))
 
@@ -114,6 +118,9 @@
       (caddr exp)
       (make-lambda (cdadr exp) ; formal parameters
                    (cddr exp)))) ; body
+(define (make-definition var value)
+  (list 'define var value)
+  )
 
 
 ; lambda expressions are lists that begin with the symbol lambda
@@ -135,7 +142,7 @@
       'false))
 
 (define (make-if predicate consequent alternative)
-  (list 'if predicate consequent alternative))
+  (cons 'if (list predicate consequent alternative)))
 
 
 ; begin packages a sequence of expressions into a single expression.
@@ -190,14 +197,147 @@
                      (expand-clauses rest))))))
 
 
+; helper procedures
+(define false #f)
+(define (true? x) (not (eq? x false)))
+(define (false? x) (eq? x false))
+(define test-env user-initial-environment)
+
+
+; Exercise 4.4
+; and expression is of the form:
+; ('and <exp1> <exp2> ... <expn>)
+(define (and-exps exp)
+  (cdr exp)
+  )
+
+(define (eval-and exp env)
+  (define (eval-and-exps exps last-val)
+    (if (null? exps)
+        last-val
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              (eval-and-exps (cdr exps) val)
+              'false
+              )
+          )
+        )
+    )
+
+  (eval-and-exps (and-exps exp) 'true)
+  )
+
+; or expression is of the form:
+; ('or <exp1> <exp2> ... <expn>)
+(define (or-exps exp)
+  (cdr exp)
+  )
+
+(define (eval-or exp env)
+  (define (eval-or-exps exps)
+    (if (null? exps)
+        'false
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              val
+              (eval-or-exps (cdr exps))
+              )
+          )
+        )
+    )
+
+  (eval-or-exps (or-exps exp))
+  )
+
+; Exercise 4.6
+; let expression has the form of:
+; ('let <statements> <body>)
+; <statements>: (<stat1> ... <statn>)
+; <stati>: (<vari> <expi>)
+; <body>: sequence of expression
+(define (let? exp)
+  (tagged-list? exp 'let)
+  )
+(define (let-statements exp)
+  (cadr exp)
+  )
+(define (let-stat-var stat)
+  (car stat)
+  )
+(define (let-stat-exp stat)
+  (cadr stat)
+  )
+(define (let-body exp)
+  (cddr exp)
+  )
+(define (make-let statements body)
+  (cons 'let (cons statements body))
+  )
+
+
+; Exercise 4.7
+; let*
+(define (let*? exp)
+  (tagged-list? exp 'let*))
+
+(define (let*->nested-lets exp)
+  (define (iter statements body)
+    (if (null? (cdr statements))
+        (make-let (car statements) body)
+        (make-let (car statements) (iter (cdr statements) body))
+        )
+    )
+
+  (iter (let-statements exp) (let-body exp))
+  )
+
+; Exercise 4.8
+; named let
+(define (let->combination exp)
+  ;; named let?
+  (if (= (length exp) 4)
+      (let (
+            (var (cadr exp))
+            (parameters (map let-stat-var (caddr exp)))
+            (arguments (map let-stat-exp (caddr exp)))
+            (body (cadddr exp))
+            )
+        (let ((lambda-body (cons
+                            (make-definition (cons var parameters) body)
+                            (make-application var arguments))))
+          ; create lambda with no parameters and call it immediately
+          ; so that the name used by named let is only visible inside this lambda
+          ; the body of this lambda consists of 2 expressions
+          ; 1. define the procedure
+          ; 2. call it with supplied arguments extracted from named let bindings
+          (make-application
+           (make-lambda '() lambda-body)
+           '()
+           )
+          )
+        )
+      (let (
+            (parameters (map let-stat-var (let-statements exp)))
+            (body (let-body exp))
+            (arguments (map let-stat-exp (let-statements exp)))
+            )
+        (make-application
+         (make-lambda parameters body)
+         arguments
+         )
+        )
+      )
+  )
 
 ;-----------------------------------------------------------------------------------
 (#%provide eval apply list-of-values eval-if eval-sequence eval-assignment
            eval-definition self-evaluating? variable? quoted? text-of-quotation
            tagged-list? assignment? assignment-variable assignment-value
-           definition? definition-variable definition-value lambda?
+           definition? definition-variable definition-value make-definition lambda?
            lambda-parameters lambda-body make-lambda if? if-predicate if-consequent
            if-alternative make-if begin? begin-actions last-exp? first-exp rest-exps
            make-begin sequence-exp application? operator operands first-operand
            rest-operands cond? cond-clauses cond-else-clause? cond-predicate
-           cond-actions cond->if expand-clauses make-application)
+           cond-actions cond->if expand-clauses make-application let? let-statements
+           let-stat-var let-stat-exp let-body let->combination make-let let*?
+           let*->nested-lets)

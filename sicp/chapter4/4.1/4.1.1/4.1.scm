@@ -34,7 +34,7 @@
       '()
       (let ((rest (list-of-values (rest-operands exps) env)))
         (cons (eval (first-operand exps) env)
-              rest)1
+              rest)
         )
       )
   )
