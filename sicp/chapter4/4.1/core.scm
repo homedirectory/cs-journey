@@ -21,7 +21,7 @@
         ((let? exp)
          (eval (let->combination exp) env))
         ((let*? exp)
-         (eval (let*->nested-lest exp) env))
+         (eval (let*->nested-lets exp) env))
         (else
          (error "Unknown expression type: EVAL" exp))))
 
@@ -197,13 +197,6 @@
                      (expand-clauses rest))))))
 
 
-; helper procedures
-(define false #f)
-(define (true? x) (not (eq? x false)))
-(define (false? x) (eq? x false))
-(define test-env user-initial-environment)
-
-
 ; Exercise 4.4
 ; and expression is of the form:
 ; ('and <exp1> <exp2> ... <expn>)
@@ -252,28 +245,21 @@
 ; Exercise 4.6
 ; let expression has the form of:
 ; ('let <statements> <body>)
-; <statements>: (<stat1> ... <statn>)
-; <stati>: (<vari> <expi>)
+; <statements>: (<stat1> ... <statn>) ;; (list)
+; <stati>: (<vari> <expi>) ;; (cons)
 ; <body>: sequence of expression
 (define (let? exp)
-  (tagged-list? exp 'let)
-  )
+  (tagged-list? exp 'let))
 (define (let-statements exp)
-  (cadr exp)
-  )
+  (cadr exp))
 (define (let-stat-var stat)
-  (car stat)
-  )
+  (car stat))
 (define (let-stat-exp stat)
-  (cadr stat)
-  )
+  (cdr stat))
 (define (let-body exp)
-  (cddr exp)
-  )
+  (cddr exp))
 (define (make-let statements body)
-  (cons 'let (cons statements body))
-  )
-
+  (cons 'let (cons statements body)))
 
 ; Exercise 4.7
 ; let*
@@ -329,6 +315,139 @@
       )
   )
 
+; Exercise 4.9
+; "for" iteration construct
+(define (for? exp) (tagged-list? exp 'for))
+(define (for-inner-proc-name exp) (caadr exp))
+(define (for-inner-arg-name exp) (cdadr exp))
+(define (for-iter-var exp) (caaddr exp))
+(define (for-iter-ds exp) (cdaddr exp))
+(define (for-body exp) (cadddr exp))
+(define (make-for inner-proc-name inner-arg-name iter-var iter-ds body)
+  (list 'for (cons inner-proc-name inner-arg-name) (cons iter-var iter-ds) body))
+
+(define (for->combination exp)
+  (let (
+        (inner-proc-name (for-inner-proc-name exp))
+        (inner-arg-name (for-arg-proc-name exp))
+        (iter-var (for-iter-var exp))
+        (iter-ds (for-iter-ds exp))
+        (body (make-if
+               (make-application 'not (make-application 'null? inner-arg-name))
+               (make-begin (list
+                            (make-let (list (cons inner-arg-name (make-application 'car inner-arg-name)))
+                                      (for-body exp))
+                            (make-application inner-proc-name (make-application 'cdr inner-arg-name))
+                            )
+                           (for-body exp))))
+        )
+    (let ((lambda-body (cons
+                        (make-definition (cons inner-proc-name inner-arg-name) body)
+                        (make-application inner-proc-name iter-ds))))
+      (make-application
+       (make-lambda '() lambda-body)
+       '()
+       )
+      )
+    )
+  )
+
+
+; 4.1.3
+; Testing of predicates
+(define (true? x) (not (eq? x false)))
+(define (false? x) (eq? x false))
+
+; Representing procedures
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+(define (compound-procedure? p)
+  (tagged-list? p 'procedure))
+(define (procedure-parameters p) (cadr p))
+(define (procedure-body p) (caddr p))
+(define (procedure-environment p) (cadddr p))
+
+; Operations on Environments
+; environment is a sequence of frames, where each frame is a table
+; of bindings that associate variables with their values
+(define (enclosing-environment env) (cdr env))
+(define (first-frame env) (car env))
+(define the-empty-environment '())
+
+; a frame is represented as a pair of lists
+; 1. list of vars bound in that frame
+; 2. list of associated values
+(define (make-frame variables values)
+  (cons variables values))
+(define (frame-variables frame) (car frame))
+(define (frame-values frame) (cdr frame))
+(define (add-binding-to-frame! var val frame)
+  (set-car! frame (cons var (car frame)))
+  (set-cdr! frame (cons val (cdr frame))))
+
+(define (extend-environment vars vals base-env)
+  (if (= (length vars) (length vals))
+      (cons (make-frame vars vals) base-env)
+      (if (< (length vars) (length vals))
+          (error "Too many arguments supplied" vars vals)
+          (error "Too few arguments supplied" vars vals))))
+
+; looking up a variable in an environment starts with scanning the first frame
+; if not found, we scan the enclosing environment and so on
+; until we find it or signal an "unbound variable" error.
+(define (lookup-variable-value var env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop (enclosing-environment env)))
+            ((eq? var (car vars)) (car vals))
+            (else (scan (cdr vars) (cdr vals))))
+      )
+    
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (let ((frame (first-frame env)))
+          (scan (frame-variables frame)
+                (frame-values frame))))
+    )
+  
+  (env-loop env)
+  )
+
+(define (set-variable-value! var val env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop (enclosing-environment env)))
+            ((eq? var (car vars)) (set-car! vals val))
+            (else (scan (cdr vars) (cdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable: SET!" var)
+        (let ((frame (first-frame env)))
+          (scan (frame-variables frame)
+                (frame-values frame))))
+    )
+  
+  (env-loop env)
+  )
+
+; When defining a new variable we work only with the first frame
+(define (define-variable! var val env)
+  (let ((frame (first-frame env)))
+    
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (add-binding-to-frame! var val frame))
+            ((eq? var (car vars)) (set-car! vals val))
+            (else (scan (cdr vars) (cdr vals))))
+      )
+    
+    (scan (frame-variables frame) (frame-values frame))
+    )
+  )
+
+;(define test-env user-initial-environment)
+
 ;-----------------------------------------------------------------------------------
 (#%provide eval apply list-of-values eval-if eval-sequence eval-assignment
            eval-definition self-evaluating? variable? quoted? text-of-quotation
@@ -340,4 +459,5 @@
            rest-operands cond? cond-clauses cond-else-clause? cond-predicate
            cond-actions cond->if expand-clauses make-application let? let-statements
            let-stat-var let-stat-exp let-body let->combination make-let let*?
-           let*->nested-lets)
+           let*->nested-lets for? for-inner-proc-name for-inner-arg-name for-iter-var
+           for-iter-ds for-body make-for for->combination)

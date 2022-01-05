@@ -1,3 +1,5 @@
+#lang sicp
+
 ;Exercise 3.25 
 ;---------------------------------------------
 
@@ -67,8 +69,13 @@
     dispatch)
   )
 
+(define (lookup table key)
+  ((table 'lookup) key))
+
+(define (insert! table keys value)
+  ((table 'insert!) keys value))
 ;------------------------------------------------
-(#%provide make-table)
+(#%provide make-table lookup insert!)
 
 ;------------------------------------------------
 ; TEST
