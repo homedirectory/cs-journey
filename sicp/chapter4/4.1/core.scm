@@ -1,5 +1,7 @@
 #lang sicp
 
+(define apply-in-underlying-scheme apply)
+
 ; ***** 4.1.1 The Core of the Evaluator *****
 
 (define (eval exp env)
@@ -16,8 +18,8 @@
          (eval-sequence (begin-actions exp) env))
         ((cond? exp) (eval (cond->if exp) env))
         ((application? exp)
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+         (m-apply (eval (operator exp) env)
+                  (list-of-values (operands exp) env)))
         ((let? exp)
          (eval (let->combination exp) env))
         ((let*? exp)
@@ -26,7 +28,7 @@
          (error "Unknown expression type: EVAL" exp))))
 
 
-(define (apply procedure arguments)
+(define (m-apply procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
         ((compound-procedure? procedure)
@@ -329,25 +331,26 @@
 (define (for->combination exp)
   (let (
         (inner-proc-name (for-inner-proc-name exp))
-        (inner-arg-name (for-arg-proc-name exp))
+        (inner-arg-name (for-inner-arg-name exp))
         (iter-var (for-iter-var exp))
         (iter-ds (for-iter-ds exp))
-        (body (make-if
-               (make-application 'not (make-application 'null? inner-arg-name))
-               (make-begin (list
-                            (make-let (list (cons inner-arg-name (make-application 'car inner-arg-name)))
-                                      (for-body exp))
-                            (make-application inner-proc-name (make-application 'cdr inner-arg-name))
-                            )
-                           (for-body exp))))
         )
-    (let ((lambda-body (cons
-                        (make-definition (cons inner-proc-name inner-arg-name) body)
-                        (make-application inner-proc-name iter-ds))))
-      (make-application
-       (make-lambda '() lambda-body)
-       '()
-       )
+    (let ((body (make-if
+                 (make-application 'not (make-application 'null? inner-arg-name))
+                 (make-begin (list
+                              (make-let (list (cons inner-arg-name (make-application 'car inner-arg-name)))
+                                        (for-body exp))
+                              (make-application inner-proc-name (make-application 'cdr inner-arg-name))
+                              )
+                             (for-body exp)))))
+      (let ((lambda-body (cons
+                          (make-definition (cons inner-proc-name inner-arg-name) body)
+                          (make-application inner-proc-name iter-ds))))
+        (make-application
+         (make-lambda '() lambda-body)
+         '()
+         )
+        )
       )
     )
   )
@@ -359,8 +362,45 @@
 (define (false? x) (eq? x false))
 
 ; Representing procedures
+; Exercise 4.16 - scanning out defines in procedure body
+(define (scan-out-defines body)
+  (define (scan-exps exps defines not-defines)
+    (if (null? exps)
+        (transform defines not-defines)
+        (if (definition? (car exps))
+            (scan-exps (cdr exps) (cons (car exps) defines) not-defines)
+            (scan-exps (cdr exps) defines (cons (car exps) not-defines))
+            )
+        )
+    )
+
+  (scan-exps body '() '())
+  )
+
+(define (transform defines rest-body)
+  (define (defines->statements defs)
+    (map (lambda (d) (cons (cadr d) '*unassigned*)) defs)
+    )
+  (define (extend-let-body defines body)
+    (if (null? defines)
+        body
+        (extend-let-body (cdr defines)
+                         (cons
+                          (list 'set! (cadar defines) (caddar defines))
+                          body))
+        )
+    )
+
+  (let ((statements (defines->statements defines)))
+    (make-let
+     statements
+     (extend-let-body defines rest-body)
+     )
+    )
+  )
+
 (define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
+  (list 'procedure parameters (scan-out-defines body) env))
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
 (define (procedure-parameters p) (cadr p))
@@ -446,18 +486,81 @@
     )
   )
 
-;(define test-env user-initial-environment)
+; 4.1.4 Running the Evaluator as a Program
+
+(define primitive-procedures
+  (list (list 'car car)
+        (list 'cdr cdr)
+        (list 'cons cons)
+        (list 'null? null?)
+        (list 'list list)
+        (list 'map map)
+        ;⟨more primitives⟩
+        ))
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+(define (primitive-procedure-objects)
+  (map (lambda (proc) (list 'primitive (cadr proc)))
+       primitive-procedures))
+
+(define (setup-environment)
+  (let ((initial-env
+         (extend-environment (primitive-procedure-names)
+                             (primitive-procedure-objects)
+                             the-empty-environment)))
+    (define-variable! 'true true initial-env)
+    (define-variable! 'false false initial-env)
+    initial-env))
+(define the-global-environment (setup-environment))
+
+(define (primitive-procedure? proc)
+  (tagged-list? proc 'primitive))
+(define (primitive-implementation proc) (cadr proc))
+
+(define (apply-primitive-procedure proc args)
+  (apply-in-underlying-scheme
+   (primitive-implementation proc) args))
+
+; driver loop
+(define input-prompt
+  ";;; M-Eval input:")
+(define output-prompt ";;; M-Eval value:")
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output (eval input the-global-environment)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
+(define (prompt-for-input string)
+  (newline) (newline) (display string) (newline))
+(define (announce-output string)
+  (newline) (display string) (newline))
+(define (user-print object)
+  (if (compound-procedure? object)
+      (display (list 'compound-procedure
+                     (procedure-parameters object)
+                     (procedure-body object)
+                     '<procedure-env>))
+      (display object)))
 
 ;-----------------------------------------------------------------------------------
-(#%provide eval apply list-of-values eval-if eval-sequence eval-assignment
+(#%provide eval m-apply list-of-values eval-if eval-sequence eval-assignment
            eval-definition self-evaluating? variable? quoted? text-of-quotation
            tagged-list? assignment? assignment-variable assignment-value
            definition? definition-variable definition-value make-definition lambda?
            lambda-parameters lambda-body make-lambda if? if-predicate if-consequent
            if-alternative make-if begin? begin-actions last-exp? first-exp rest-exps
-           make-begin sequence-exp application? operator operands first-operand
+           make-begin sequence->exp application? operator operands first-operand
            rest-operands cond? cond-clauses cond-else-clause? cond-predicate
            cond-actions cond->if expand-clauses make-application let? let-statements
            let-stat-var let-stat-exp let-body let->combination make-let let*?
            let*->nested-lets for? for-inner-proc-name for-inner-arg-name for-iter-var
-           for-iter-ds for-body make-for for->combination)
+           for-iter-ds for-body make-for for->combination make-procedure compound-procedure?
+           procedure-body procedure-parameters procedure-environment make-frame
+           frame-variables frame-values add-binding-to-frame! extend-environment
+           lookup-variable-value set-variable-value! define-variable! setup-environment
+           primitive-procedure? primitive-implementation primitive-procedures
+           primitive-procedure-names primitive-procedure-objects apply-primitive-procedure
+           input-prompt output-prompt driver-loop prompt-for-input announce-output
+           user-print)
