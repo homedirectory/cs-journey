@@ -17,13 +17,13 @@
         ((begin? exp)
          (eval-sequence (begin-actions exp) env))
         ((cond? exp) (eval (cond->if exp) env))
-        ((application? exp)
-         (m-apply (eval (operator exp) env)
-                  (list-of-values (operands exp) env)))
         ((let? exp)
          (eval (let->combination exp) env))
         ((let*? exp)
          (eval (let*->nested-lets exp) env))
+        ((application? exp)
+         (m-apply (eval (operator exp) env)
+                  (list-of-values (operands exp) env)))
         (else
          (error "Unknown expression type: EVAL" exp))))
 
@@ -248,7 +248,7 @@
 ; let expression has the form of:
 ; ('let <statements> <body>)
 ; <statements>: (<stat1> ... <statn>) ;; (list)
-; <stati>: (<vari> <expi>) ;; (cons)
+; <stati>: (<vari> <expi>) ;; (list)
 ; <body>: sequence of expression
 (define (let? exp)
   (tagged-list? exp 'let))
@@ -257,7 +257,7 @@
 (define (let-stat-var stat)
   (car stat))
 (define (let-stat-exp stat)
-  (cdr stat))
+  (cadr stat))
 (define (let-body exp)
   (cddr exp))
 (define (make-let statements body)
@@ -366,7 +366,10 @@
 (define (scan-out-defines body)
   (define (scan-exps exps defines not-defines)
     (if (null? exps)
-        (transform defines not-defines)
+        (if (not (null? defines))
+            (transform defines not-defines)
+            body
+            )
         (if (definition? (car exps))
             (scan-exps (cdr exps) (cons (car exps) defines) not-defines)
             (scan-exps (cdr exps) defines (cons (car exps) not-defines))
@@ -379,7 +382,7 @@
 
 (define (transform defines rest-body)
   (define (defines->statements defs)
-    (map (lambda (d) (cons (cadr d) '*unassigned*)) defs)
+    (map (lambda (d) (list (cadr d) '*unassigned*)) defs)
     )
   (define (extend-let-body defines body)
     (if (null? defines)
@@ -494,7 +497,11 @@
         (list 'cons cons)
         (list 'null? null?)
         (list 'list list)
-        (list 'map map)
+        (list '+ +)
+        (list '- -)
+        (list '* *)
+        (list '/ /)
+        ;(list 'let let)
         ;⟨more primitives⟩
         ))
 (define (primitive-procedure-names)

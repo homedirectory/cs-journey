@@ -40,7 +40,10 @@
 (define (scan-out-defines body)
   (define (scan-exps exps defines not-defines)
     (if (null? exps)
-        (transform defines not-defines)
+        (if (not (null? defines))
+            (transform defines not-defines)
+            body
+            )
         (if (definition? (car exps))
             (scan-exps (cdr exps) (cons (car exps) defines) not-defines)
             (scan-exps (cdr exps) defines (cons (car exps) not-defines))
@@ -53,7 +56,7 @@
 
 (define (transform defines rest-body)
   (define (defines->statements defs)
-    (map (lambda (d) (cons (cadr d) '*unassigned*)) defs)
+    (map (lambda (d) (list (cadr d) '*unassigned*)) defs)
     )
   (define (extend-let-body defines body)
     (if (null? defines)
