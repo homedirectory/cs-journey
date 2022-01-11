@@ -1,6 +1,7 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../../../helpers.scm"
+           "../let.scm")
 
 ;Exercise 4.7: let* is similar to let, except that the bind-
 ;ings of the let* variables are performed sequentially from

@@ -1,6 +1,7 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../core-helpers.scm"
+           "../define.scm" "../let.scm")
 
 ;Exercise 4.16: In this exercise we implement the method
 ;just described for interpreting internal definitions. We assume
@@ -82,6 +83,7 @@
     )
   )
 
+(#%provide (all-defined))
 
 ;c. Install scan-out-defines in the interpreter, either in make-procedure
 ;or in procedure-body. Which place is better? Why?

@@ -1,0 +1,30 @@
+Input:
+(define (ff x)
+  (define a 1)
+  (+ x a)
+  )
+
+(ff 1)
+
+(eval {ff 1} env)
+    (application? {ff 1})
+        (m-apply (eval ff env) (list-of-values {1} env))
+            arg1: (eval ff env)
+                    (lookup-variable ff env) -> {procedure {x} {{let {{a '*unassigned*}} {{set! a 1} {+ x a}}}} env}
+            arg2: (eval 1 env) -> {1}
+            
+            (compound-procedure? arg1)
+                (eval-sequence (procedure-body arg1) (extend-env ...))
+                    arg11: (procedure-body arg1) -> {{let {{a '*unassigned*}} {{set! a 1} {+ x a}}}}
+                    arg12: extended-env
+
+                    (eval (car arg11) extended-env)
+                        (let? exp)
+                            (eval (let->combination exp) extended-env)
+                                arg31: (let->combination exp)
+                                        (make-application (make-labmda {a} {{set! a 1} {+ x a}}) {'*unassigned*})
+
+                                (eval arg31 extended-env)
+                                    (application? arg31)
+                                        (m-apply (eval (operator arg31) env) (list-of-values {'*unassigned}))
+

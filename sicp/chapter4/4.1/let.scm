@@ -1,14 +1,47 @@
 #lang sicp
 
-(#%require "../core-helpers.scm"
-           "../core.scm" "../let.scm" "../define.scm"
-           "../lambda.scm")
+(#%require "../../helpers.scm" "core-helpers.scm"
+           "define.scm"
+           "lambda.scm")
 
-;Exercise 4.8: “Named let” is a variant of let that has the
-;form:
+; Exercise 4.6
+; let expression has the form of:
+; ('let <statements> <body>)
+; <statements>: (<stat1> ... <statn>) ;; (list)
+; <stati>: (<vari> <expi>) ;; (list)
+; <body>: sequence of expression
+(define (let? exp)
+  (tagged-list? exp 'let))
+(define (let-statements exp)
+  (cadr exp))
+(define (let-stat-var stat)
+  (car stat))
+(define (let-stat-exp stat)
+  (cadr stat))
+(define (let-body exp)
+  (cddr exp))
+(define (make-let statements body)
+  (append (list 'let statements) body))
+
+; Exercise 4.7
+; let*
+(define (let*? exp)
+  (tagged-list? exp 'let*))
+
+(define (let*->nested-lets exp)
+  (define (iter statements body)
+    (if (null? (cdr statements))
+        (make-let (car statements) body)
+        (make-let (car statements) (iter (cdr statements) body))
+        )
+    )
+
+  (iter (let-statements exp) (let-body exp))
+  )
+
+; Exercise 4.8
+; named let
 ;(let ⟨var⟩ ⟨bindings⟩ ⟨body⟩)
-
-;----------------------------------------------------------
 (define (named-let? exp)
   (symbol? (cadr exp)))
 (define (let->combination exp)
@@ -18,9 +51,9 @@
             (var (cadr exp))
             (parameters (map let-stat-var (caddr exp)))
             (arguments (map let-stat-exp (caddr exp)))
-            (body (cadddr exp))
+            (body (cdddr exp))
             )
-        (let ((lambda-body (cons
+        (let ((lambda-body (list
                             (make-definition (cons var parameters) body)
                             (make-application var arguments))))
           ; create lambda with no parameters and call it immediately
@@ -47,8 +80,5 @@
       )
   )
 
-(define (make-let statements body)
-  (list 'let statements body)
-  )
 
-
+(#%provide (all-defined))

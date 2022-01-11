@@ -1,6 +1,6 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../../../helpers.scm")
 (#%require "4.12.scm")
 
 ; Exercise 4.13

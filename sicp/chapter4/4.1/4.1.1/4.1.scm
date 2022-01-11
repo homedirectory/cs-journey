@@ -1,6 +1,6 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../core-helpers.scm")
 
 ;Exercise 4.1: Notice that we cannot tell whether the metacir-
 ;cular evaluator evaluates operands from left to right or from

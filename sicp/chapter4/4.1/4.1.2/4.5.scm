@@ -1,6 +1,7 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../core-helpers.scm"
+           "../cond.scm" "../begin.scm" "../if.scm")
 
 ;Exercise 4.5: Scheme allows an additional syntax for cond
 ;clauses, (⟨test⟩ => ⟨recipient⟩). If ⟨test ⟩ evaluates to a

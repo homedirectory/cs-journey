@@ -1,6 +1,6 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../../../helpers.scm" "../core-helpers.scm")
 
 ;Exercise 4.2: Louis Reasoner plans to reorder the cond clauses
 ;in eval so that the clause for procedure applications ap-

@@ -1,6 +1,6 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../core-helpers.scm")
 
 ;Exercise 4.3: Rewrite eval so that the dispatch is done
 ;in data-directed style. Compare this with the data-directed

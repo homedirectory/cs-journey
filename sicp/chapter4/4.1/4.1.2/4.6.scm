@@ -1,6 +1,7 @@
 #lang sicp
 
-(#%require "../core.scm")
+(#%require "../../../helpers.scm"
+           "../core-helpers.scm" "../lambda.scm")
 
 ;Exercise 4.6: Implement a syntactic transformation let->combination
 ;that reduces evaluating let expressions to evaluating com-

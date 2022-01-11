@@ -1,8 +1,8 @@
 #lang sicp
 
-(#%require "../../../helpers.scm" "../core-helpers.scm"
-           "../if.scm" "../begin.scm" "../let.scm" "../define.scm"
-           "../lambda.scm")
+(#%require "../../helpers.scm" "core-helpers.scm"
+           "if.scm" "begin.scm" "let.scm" "define.scm"
+           "lambda.scm")
 
 ; Exercise 4.9
 ; Iteration constructs

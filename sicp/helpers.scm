@@ -50,6 +50,11 @@
   (= (remainder x y) 0)
   )
 
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+      (eq? (car exp) tag)
+      false))
+
 ;---------------------------------------------
  
-(#%provide print square average sum expt divisible?)
+(#%provide print square average sum expt divisible? tagged-list?)

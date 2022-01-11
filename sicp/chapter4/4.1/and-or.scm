@@ -1,7 +1,7 @@
 #lang sicp
 
-(#%require "../core-helpers.scm"
-           "../if.scm")
+(#%require "core-helpers.scm"
+           "if.scm")
 
 ;Exercise 4.3: Exercise 4.4: Recall the definitions of the special forms and
 ;and or from Chapter 1:
