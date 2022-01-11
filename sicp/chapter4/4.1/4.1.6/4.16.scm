@@ -15,7 +15,7 @@
 ;      (cond ((null? vars)
 ;             (env-loop (enclosing-environment env)))
 ;            ((eq? var (car vars))
-;             (if (eq? (car vals) '*unassigned)
+;             (if (eq? (car vals) '*unassigned*)
 ;                 (error "Unassigned variable" var)
 ;                 (car vals))
 ;             )
@@ -36,6 +36,9 @@
 ;and returns an equivalent one that has no internal definitions,
 ;by making the transformation described above.
 
+(define (definition-variable? exp)
+  (symbol? (cadr exp)))
+
 ; body = sequence of expressions
 (define (scan-out-defines body)
   (define (scan-exps exps defines not-defines)
@@ -44,9 +47,10 @@
             (transform defines not-defines)
             body
             )
-        (if (definition? (car exps))
-            (scan-exps (cdr exps) (cons (car exps) defines) not-defines)
-            (scan-exps (cdr exps) defines (cons (car exps) not-defines))
+        ; this should also check if a variable is being defined (not procedure)
+        (if (and (definition? (car exps)) (definition-variable? (car exps)))
+            (scan-exps (cdr exps) (append defines (list (car exps))) not-defines)
+            (scan-exps (cdr exps) defines (append not-defines (list(car exps))))
             )
         )
     )
@@ -56,7 +60,7 @@
 
 (define (transform defines rest-body)
   (define (defines->statements defs)
-    (map (lambda (d) (list (cadr d) '*unassigned*)) defs)
+    (map (lambda (d) (list (cadr d) (make-quotation '*unassigned*))) defs)
     )
   (define (extend-let-body defines body)
     (if (null? defines)
@@ -69,9 +73,11 @@
     )
 
   (let ((statements (defines->statements defines)))
-    (make-let
-     statements
-     (extend-let-body defines rest-body)
+    (list
+     (make-let
+      statements
+      (extend-let-body defines rest-body)
+      )
      )
     )
   )
@@ -84,4 +90,28 @@
 ; TEST
 ;(define test-body (list (list 'define 'a (list 'list 1 2)) (list 'define 'b (list 'list 3 4))
 ;                        (list 'list (list 'car 'a) (list 'car 'b))))
+(define test-body (list (make-definition 'a 1)
+                        (list '+ 'a 'x)))
+(define test-body1 (list (list '+ 1 2)))
+(define test-body2 (list (make-definition 'a 1)
+                         (list 'define (list 'g 'x)
+                               (list '+ 'x 1))
+                         (list '+ (list '* (list 'g 'x) 'y) 'a)))
 ;(scan-out-defines test-body)
+
+
+(define (f x)
+  (define (g x) (+ 1 x))
+  (g (+ x 1))
+  )
+
+(define (ff x)
+  (define a 1)
+  (+ x a)
+  )
+
+(define (ff2 x)
+  (define a 1)
+  (define b 10)
+  (+ x a b)
+  )

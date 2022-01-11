@@ -91,6 +91,7 @@
 ; Quotations have the form (quote <text-of-quotation>)
 (define (quoted? exp) (tagged-list? exp 'quote))
 (define (text-of-quotation exp) (cadr exp))
+(define (make-quotation text) (list 'quote text))
 
 (define (tagged-list? exp tag)
   (if (pair? exp)
@@ -111,12 +112,17 @@
 ; which is the same as :
 ; (define <var> (lambda <param1> ... <paramn>) <body>))
 (define (definition? exp) (tagged-list? exp 'define))
+
+; Exercise 4.16
+(define (definition-variable? exp)
+  (symbol? (cadr exp)))
+
 (define (definition-variable exp)
-  (if (symbol? (cadr exp))
+  (if (definition-variable? exp)
       (cadr exp)
       (caadr exp)))
 (define (definition-value exp)
-  (if (symbol? (cadr exp))
+  (if (definition-variable? exp)
       (caddr exp)
       (make-lambda (cdadr exp) ; formal parameters
                    (cddr exp)))) ; body
@@ -130,7 +136,7 @@
 (define (lambda-parameters exp) (cadr exp))
 (define (lambda-body exp) (cddr exp))
 (define (make-lambda parameters body)
-  (cons 'lambda (cons parameters body)))
+  (append (list 'lambda parameters) body))
 
 
 ; Conditionals begin with if and have a predicate, consequent,
@@ -144,16 +150,16 @@
       'false))
 
 (define (make-if predicate consequent alternative)
-  (cons 'if (list predicate consequent alternative)))
+  (list 'if predicate consequent alternative))
 
 
 ; begin packages a sequence of expressions into a single expression.
 (define (begin? exp) (tagged-list? exp 'begin))
-(define (begin-actions exp) (cdr exp))
+(define (begin-actions exp) (cadr exp))
 (define (last-exp? seq) (null? (cdr seq)))
 (define (first-exp seq) (car seq))
 (define (rest-exps seq) (cdr seq))
-(define (make-begin seq) (cons 'begin seq))
+(define (make-begin seq) (list 'begin seq))
 
 (define (sequence->exp seq)
   (cond ((null? seq) seq)
@@ -261,7 +267,7 @@
 (define (let-body exp)
   (cddr exp))
 (define (make-let statements body)
-  (cons 'let (cons statements body)))
+  (append (list 'let statements) body))
 
 ; Exercise 4.7
 ; let*
@@ -281,16 +287,19 @@
 
 ; Exercise 4.8
 ; named let
+;(let ⟨var⟩ ⟨bindings⟩ ⟨body⟩)
+(define (named-let? exp)
+  (symbol? (cadr exp)))
 (define (let->combination exp)
   ;; named let?
-  (if (= (length exp) 4)
+  (if (named-let? exp)
       (let (
             (var (cadr exp))
             (parameters (map let-stat-var (caddr exp)))
             (arguments (map let-stat-exp (caddr exp)))
-            (body (cadddr exp))
+            (body (cdddr exp))
             )
-        (let ((lambda-body (cons
+        (let ((lambda-body (list
                             (make-definition (cons var parameters) body)
                             (make-application var arguments))))
           ; create lambda with no parameters and call it immediately
@@ -320,13 +329,13 @@
 ; Exercise 4.9
 ; "for" iteration construct
 (define (for? exp) (tagged-list? exp 'for))
-(define (for-inner-proc-name exp) (caadr exp))
-(define (for-inner-arg-name exp) (cdadr exp))
-(define (for-iter-var exp) (caaddr exp))
-(define (for-iter-ds exp) (cdaddr exp))
-(define (for-body exp) (cadddr exp))
+(define (for-inner-proc-name exp) (cadr exp))
+(define (for-inner-arg-name exp) (caddr exp))
+(define (for-iter-var exp) (cadddr exp))
+(define (for-iter-ds exp) (car (cddddr exp)))
+(define (for-body exp) (cadr (cddddr exp)))
 (define (make-for inner-proc-name inner-arg-name iter-var iter-ds body)
-  (list 'for (cons inner-proc-name inner-arg-name) (cons iter-var iter-ds) body))
+  (list 'for inner-proc-name inner-arg-name iter-var iter-ds body))
 
 (define (for->combination exp)
   (let (
@@ -338,13 +347,13 @@
     (let ((body (make-if
                  (make-application 'not (make-application 'null? inner-arg-name))
                  (make-begin (list
-                              (make-let (list (cons inner-arg-name (make-application 'car inner-arg-name)))
+                              (make-let (list inner-arg-name (make-application 'car inner-arg-name))
                                         (for-body exp))
                               (make-application inner-proc-name (make-application 'cdr inner-arg-name))
                               )
                              (for-body exp)))))
-      (let ((lambda-body (cons
-                          (make-definition (cons inner-proc-name inner-arg-name) body)
+      (let ((lambda-body (list
+                          (make-definition (list inner-proc-name inner-arg-name) body)
                           (make-application inner-proc-name iter-ds))))
         (make-application
          (make-lambda '() lambda-body)
@@ -370,9 +379,9 @@
             (transform defines not-defines)
             body
             )
-        (if (definition? (car exps))
-            (scan-exps (cdr exps) (cons (car exps) defines) not-defines)
-            (scan-exps (cdr exps) defines (cons (car exps) not-defines))
+        (if (and (definition? (car exps)) (definition-variable? (car exps)))
+            (scan-exps (cdr exps) (append defines (list (car exps))) not-defines)
+            (scan-exps (cdr exps) defines (append not-defines (list(car exps))))
             )
         )
     )
@@ -382,7 +391,7 @@
 
 (define (transform defines rest-body)
   (define (defines->statements defs)
-    (map (lambda (d) (list (cadr d) '*unassigned*)) defs)
+    (map (lambda (d) (list (cadr d) (make-quotation '*unassigned*))) defs)
     )
   (define (extend-let-body defines body)
     (if (null? defines)
@@ -395,9 +404,11 @@
     )
 
   (let ((statements (defines->statements defines)))
-    (make-let
-     statements
-     (extend-let-body defines rest-body)
+    (list
+     (make-let
+      statements
+      (extend-let-body defines rest-body)
+      )
      )
     )
   )
@@ -443,7 +454,11 @@
     (define (scan vars vals)
       (cond ((null? vars)
              (env-loop (enclosing-environment env)))
-            ((eq? var (car vars)) (car vals))
+            ((eq? var (car vars))
+             (if (eq? (car vals) '*unassigned*)
+                 (error "Unassigned variable" var)
+                 (car vals))
+             )
             (else (scan (cdr vars) (cdr vals))))
       )
     
@@ -551,10 +566,11 @@
                      '<procedure-env>))
       (display object)))
 
+;(driver-loop)
 ;-----------------------------------------------------------------------------------
 (#%provide eval m-apply list-of-values eval-if eval-sequence eval-assignment
            eval-definition self-evaluating? variable? quoted? text-of-quotation
-           tagged-list? assignment? assignment-variable assignment-value
+           make-quotation tagged-list? assignment? assignment-variable assignment-value
            definition? definition-variable definition-value make-definition lambda?
            lambda-parameters lambda-body make-lambda if? if-predicate if-consequent
            if-alternative make-if begin? begin-actions last-exp? first-exp rest-exps

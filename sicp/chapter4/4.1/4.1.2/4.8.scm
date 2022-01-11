@@ -7,10 +7,11 @@
 ;(let ⟨var⟩ ⟨bindings⟩ ⟨body⟩)
 
 ;----------------------------------------------------------
-
+(define (named-let? exp)
+  (symbol? (cadr exp)))
 (define (let->combination exp)
   ;; named let?
-  (if (= (length exp) 4)
+  (if (named-let? exp)
       (let (
             (var (cadr exp))
             (parameters (map let-stat-var (caddr exp)))
