@@ -1,0 +1,14 @@
+((lambda (x) (define u 1) (define v 5) (+ x u v)) 4)
+
+1. definitions are interpreted sequentially
+    in eval:
+        exp: (+ x u v)
+        env: {frame1 initial-env}
+            frame1: {{v u x} 5 1 4}
+
+2. definitions are scanned out
+    in eval:
+        exp: (+ x u v)
+        env: {frame1 frame2 initial-env}
+            frame1: {{u v} 1 5}
+            frame2: {{x} 4}

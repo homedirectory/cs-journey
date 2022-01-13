@@ -19,44 +19,11 @@
   (cdr exp)
   )
 
-(define (eval-and exp env)
-  (define (eval-and-exps exps last-val)
-    (if (null? exps)
-        last-val
-        (let ((val (eval (car exps) env)))
-          (if (true? val)
-              (eval-and-exps (cdr exps) val)
-              'false
-              )
-          )
-        )
-    )
-
-  (eval-and-exps (and-exps exp) 'true)
-  )
-
 ; or expression is of the form:
 ; ('or <exp1> <exp2> ... <expn>)
 (define (or-exps exp)
   (cdr exp)
   )
-
-(define (eval-or exp env)
-  (define (eval-or-exps exps)
-    (if (null? exps)
-        'false
-        (let ((val (eval (car exps) env)))
-          (if (true? val)
-              val
-              (eval-or-exps (cdr exps))
-              )
-          )
-        )
-    )
-
-  (eval-or-exps (or-exps exp))
-  )
-
 
 ; and as a derived expression
 (define (and->if exp)

@@ -25,6 +25,8 @@
         ((cond? exp) (eval (cond->if exp) env))
         ((let? exp)
          (eval (let->combination exp) env))
+        ((letrec? exp)
+         (eval (letrec->let exp) env))
         ((let*? exp)
          (eval (let*->nested-lets exp) env))
         ((application? exp)
@@ -47,15 +49,76 @@
          (error
           "Unknown procedure type: APPLY" procedure))))
 
+(define (list-of-values exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (eval (first-operand exps) env)
+            (list-of-values (rest-operands exps) env))))
+
 (define (eval-assignment exp env)
   (set-variable-value! (assignment-variable exp)
                        (eval (assignment-value exp) env)
                        env)
   'ok)
 
+; begin.scm
+(define (eval-sequence exps env)
+  (cond ((last-exp? exps)
+         (eval (first-exp exps) env))
+        (else
+         (eval (first-exp exps) env)
+         (eval-sequence (rest-exps exps) env))))
+
+; define.scm
+(define (eval-definition exp env)
+  (define-variable! (definition-variable exp)
+    (eval (definition-value exp) env)
+    env)
+  'ok)
+
+; and-or.scm
+(define (eval-and exp env)
+  (define (eval-and-exps exps last-val)
+    (if (null? exps)
+        last-val
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              (eval-and-exps (cdr exps) val)
+              'false
+              )
+          )
+        )
+    )
+
+  (eval-and-exps (and-exps exp) 'true)
+  )
+
+(define (eval-or exp env)
+  (define (eval-or-exps exps)
+    (if (null? exps)
+        'false
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              val
+              (eval-or-exps (cdr exps))
+              )
+          )
+        )
+    )
+
+  (eval-or-exps (or-exps exp))
+  )
+
+; if.scm
+(define (eval-if exp env)
+  (if (true? (eval (if-predicate exp) env))
+      (eval (if-consequent exp) env)
+      (eval (if-alternative exp) env)))
+
 ; Representing procedures
 (define (make-procedure parameters body env)
   (list 'procedure parameters (scan-out-defines body) env))
+;  (list 'procedure parameters body env))
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
 (define (procedure-parameters p) (cadr p))
@@ -72,7 +135,7 @@
             )
         (if (and (definition? (car exps)) (definition-variable? (car exps)))
             (scan-exps (cdr exps) (append defines (list (car exps))) not-defines)
-            (scan-exps (cdr exps) defines (append not-defines (list(car exps)))))
+            (scan-exps (cdr exps) defines (append not-defines (list (car exps)))))
         ))
 
   (scan-exps body '() '()))
@@ -83,10 +146,13 @@
   (define (extend-let-body defines body)
     (if (null? defines)
         body
-        (extend-let-body (cdr defines)
-                         (cons
-                          (list 'set! (cadar defines) (caddar defines))
-                          body))))
+        ;{{define b {+ a x}} {define a 5}}
+        (append
+         (map (lambda (d)
+                (list 'set! (cadr d) (caddr d)))
+              defines)
+         body)
+        ))
 
   (let ((statements (defines->statements defines)))
     (list
@@ -106,6 +172,11 @@
         (list '- -)
         (list '* *)
         (list '/ /)
+        (list '= =)
+        (list '> >)
+        (list '< <)
+        (list '>= >=)
+        (list '<= <=)
         ;⟨more primitives⟩
         ))
 (define (primitive-procedure-names)

@@ -80,5 +80,38 @@
       )
   )
 
+; Exercise 4.20: letrec
+; letrec has the form:
+; (letrec ((<var1> <exp1>) ... (<varn> <expn>)) <body>)
+; (list 'letrec statements body)
+
+(define (letrec? exp)
+  (tagged-list? exp 'letrec))
+(define (letrec-statements exp)
+  (cadr exp))
+(define (letrec-body exp)
+  (cddr exp))
+(define (make-letrec statements body)
+  (append (list 'letrec statements) body))
+
+; a. letrec as a derived expression (letrec -> let)
+(define (letrec->let exp)
+  (define (new-statements statements)
+    (map (lambda (s)
+           (list (let-stat-var s) (make-quotation '*unassigned*)))
+         statements))
+  (define (new-body e)
+    (let ((orig-statements (letrec-statements e))
+          (orig-body (letrec-body e)))
+      (append
+       (map (lambda (s) (list 'set! (let-stat-var s) (let-stat-exp s))) orig-statements)
+       orig-body)
+      ))
+  
+  (make-let
+   (new-statements (letrec-statements exp))
+   (new-body exp))
+  )
+
 
 (#%provide (all-defined))
