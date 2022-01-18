@@ -3,7 +3,7 @@
 (#%require "../../helpers.scm" "core-helpers.scm"
            "if.scm" "lambda.scm" "begin.scm" "cond.scm" "let.scm"
            "apply.scm" "define.scm" "and-or.scm" "for.scm"
-           "env.scm")
+           "env.scm" "thunk.scm")
 ;---------------------------------------------------------------
 
 (define apply-in-underlying-scheme apply)
@@ -30,30 +30,51 @@
         ((let*? exp)
          (eval (let*->nested-lets exp) env))
         ((application? exp)
-         (m-apply (eval (operator exp) env)
-                  (list-of-values (operands exp) env)))
+         (m-apply (actual-value (operator exp) env)
+                  (operands exp) env))
         (else
          (error "Unknown expression type: EVAL" exp))))
 
-(define (m-apply procedure arguments)
+(define (m-apply procedure arguments env)
   (cond ((primitive-procedure? procedure)
-         (apply-primitive-procedure procedure arguments))
+         (apply-primitive-procedure
+          procedure
+          (list-of-arg-values arguments env)))
         ((compound-procedure? procedure)
          (eval-sequence
           (procedure-body procedure)
           (extend-environment
            (procedure-parameters procedure)
-           arguments
+           (list-of-delayed-args arguments env)
            (procedure-environment procedure))))
         (else
-         (error
-          "Unknown procedure type: APPLY" procedure))))
+         (error "Unknown procedure type: APPLY" procedure))))
 
-(define (list-of-values exps env)
+(define (actual-value exp env)
+  (force-it (eval exp env)))
+
+; Thunks
+(define (force-it obj)
+  (cond ((thunk? obj)
+         (let ((result (actual-value (thunk-exp obj)
+                                     (thunk-env obj))))
+           (set-car! obj 'evaluated-thunk)
+           (set-car! (cdr obj) result) ; replace exp with its value
+           (set-cdr! (cdr obj) '())    ; forget unneeded env
+           result))
+        ((evaluated-thunk? obj) (thunk-value obj))
+        (else obj)))
+
+(define (list-of-arg-values exps env)
   (if (no-operands? exps)
       '()
-      (cons (eval (first-operand exps) env)
-            (list-of-values (rest-operands exps) env))))
+      (cons (actual-value (first-operand exps) env)
+            (list-of-arg-values (rest-operands exps) env))))
+(define (list-of-delayed-args exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (delay-it (first-operand exps) env)
+            (list-of-delayed-args (rest-operands exps) env))))
 
 (define (eval-assignment exp env)
   (set-variable-value! (assignment-variable exp)
@@ -111,7 +132,7 @@
 
 ; if.scm
 (define (eval-if exp env)
-  (if (true? (eval (if-predicate exp) env))
+  (if (true? (actual-value (if-predicate exp) env))
       (eval (if-consequent exp) env)
       (eval (if-alternative exp) env)))
 
@@ -206,12 +227,14 @@
    (primitive-implementation proc) args))
 
 ; driver loop
-(define input-prompt ";;; M-Eval input:")
-(define output-prompt ";;; M-Eval value:")
+(define input-prompt ";;; L-Eval input:")
+(define output-prompt ";;; L-Eval value:")
 (define (driver-loop)
   (prompt-for-input input-prompt)
   (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
+    (let ((output
+           (actual-value
+            input the-global-environment)))
       (announce-output output-prompt)
       (user-print output)))
   (driver-loop))
