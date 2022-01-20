@@ -1,8 +1,16 @@
 #lang sicp
 
+; Exercise 4.31
+; Lazy evaluation as an upward-compatible extension.
+; Example of new define syntax:
+
+;(define (f a (b lazy) c (d lazy-memo))
+;  ...)
+
 (#%require "../../helpers.scm" "core-helpers.scm"
            "if.scm" "lambda.scm" "begin.scm" "cond.scm" "let.scm"
-           "define.scm" "and-or.scm" "for.scm" "env.scm" "thunk.scm")
+           "apply.scm" "define.scm" "and-or.scm" "for.scm"
+           "env.scm" "thunk.scm")
 ;---------------------------------------------------------------
 
 (define apply-in-underlying-scheme apply)
@@ -43,8 +51,8 @@
          (eval-sequence
           (procedure-body procedure)
           (extend-environment
-           (procedure-parameters procedure)
-           (list-of-delayed-args arguments env)
+           (procedure-parameters-names procedure)
+           (list-of-args arguments (procedure-parameters procedure) env)
            (procedure-environment procedure))))
         (else
          (error "Unknown procedure type: APPLY" procedure))))
@@ -52,28 +60,59 @@
 (define (actual-value exp env)
   (force-it (eval exp env)))
 
+; --- CHANGES ---
+(define (lazy-param? param)
+  (and (pair? param) (eq? 'lazy (cadr param))))
+(define (lazy-memo-param? param)
+  (and (pair? param) (eq? 'lazy-memo (cadr param))))
+(define (lazy-param-name param) (car param))
+
+(define (procedure-parameters-names proc)
+  (map (lambda (p)
+         (if (pair? p)
+             (lazy-param-name p)
+             p))
+       (cadr proc)))
+
 ; Thunks
 (define (force-it obj)
   (cond ((thunk? obj)
          (let ((result (actual-value (thunk-exp obj)
                                      (thunk-env obj))))
-           (set-car! obj 'evaluated-thunk)
-           (set-car! (cdr obj) result) ; replace exp with its value
-           (set-cdr! (cdr obj) '())    ; forget unneeded env
+           (if (thunk-memo? obj)
+               (begin
+                 (set-car! obj 'evaluated-thunk)
+                 (set-car! (cdr obj) result) ; replace exp with its value
+                 (set-cdr! (cdr obj) '())    ; forget unneeded env
+                 ))
            result))
         ((evaluated-thunk? obj) (thunk-value obj))
         (else obj)))
+
+(define (delay-it exp env memo?)
+  (list 'thunk memo? exp env))
+(define (thunk? obj)
+  (tagged-list? obj 'thunk))
+(define (thunk-memo? thunk) (cadr thunk))
+(define (thunk-exp thunk) (caddr thunk))
+(define (thunk-env thunk) (cadddr thunk))
+
+(define (list-of-args args params env)
+  (if (no-operands? args) '()
+      (let ((param (car params)) (arg (car args)))
+        (cond ((lazy-param? param)
+               (cons (delay-it arg env #f) (list-of-args (cdr args) (cdr params) env)))
+              ((lazy-memo-param? param)
+               (cons (delay-it arg env #t) (list-of-args (cdr args) (cdr params) env)))
+              (else (cons (actual-value arg env) (list-of-args (cdr args) (cdr params) env))))
+        )))
+; --- CHANGES ---
 
 (define (list-of-arg-values exps env)
   (if (no-operands? exps)
       '()
       (cons (actual-value (first-operand exps) env)
             (list-of-arg-values (rest-operands exps) env))))
-(define (list-of-delayed-args exps env)
-  (if (no-operands? exps)
-      '()
-      (cons (delay-it (first-operand exps) env)
-            (list-of-delayed-args (rest-operands exps) env))))
 
 (define (eval-assignment exp env)
   (set-variable-value! (assignment-variable exp)
