@@ -10,31 +10,65 @@
 ; also need to modify the representation of lazy pairs so that
 ; the evaluator can identify them in order to print them.
 
-; ----------------------------------------------------------------------
-
 ; Lazy pairs and lists will be printed up to 10 elements.
+; By printing I mean a call to the "display" procedure.
 ; In:  (define a '(1 2 3 4 5 6 7 8 9 10 11 12))
 ; Out: ok
 ; In:  (display a)
 ; Out: (1 2 3 4 5 6 7 8 9 10 ...)
+; In:  a
+; Out: procedure...
 
 ; Lazy pairs will be represented as pairs:
 ; ('lazy-pair proc), where proc is the result of cons
 
-; I chose the approach of defining the respective printing procedures
-; inside the evaluator itself. Therefore I use both lazy and non-lazy
-; pairs. For lazy ones I defined "cons", "car" & "cdr" procedures.
-; Non-lazy ones are defined by the same names prepended by "scheme-",
-; e.g. "scheme-cons".
-; I also include "scheme-display" and the evaluator defined "display".
+(define (lazy-pair? exp env)
+  (if (variable? exp)
+      (let ((val (lookup-variable-value exp env)))
+        (and (pair? val) (eq? 'lazy-pair (car val))))
+      #f))
 
-; However, I realise that there is another approach which does not involve
-; programming on the level of the evaluator, but rathere in the underlying
-; Scheme itself.
+(define (lazy-pair-exp? exp)
+  (tagged-list? exp 'lazy-pair))
 
+(define (evaluator-car obj)
+  (make-application 'car (list obj)))
+(define (evaluator-cdr obj)
+  (make-application 'cdr (list obj)))
 
-; === lazy-core.scm included for tests ===
+; input is a variable name
+(define (lazy-pair-represent input env)
+  (define (iter pair res)
+    (let ((val (actual-value (evaluator-car pair) env)))
+      (cond ((null? val) res)
+            ((= 10 (length res)) (append res (list "...")))
+            (else (iter (actual-value (evaluator-cdr pair) env) (append res (list val))))
+            )))
+  
+  (iter (cadr (lookup-variable-value input env)) '()))
 
+(define (handle-output input env)
+  (if (lazy-pair? input env)
+      (lazy-pair-represent input env)
+      (actual-value input env)))
+
+(define (cons? exp)
+  (tagged-list? exp 'cons))
+
+(define (display? exp)
+  (tagged-list? exp 'display))
+
+(define (eval-display exp env)
+  (let ((arg (car (operands exp))))
+    (if (lazy-pair? arg env)
+        (let ((new-exp (make-application 'display (list (lazy-pair-represent arg env)))))
+          (m-apply (actual-value (operator new-exp) env)
+                   (operands new-exp) env))
+        (m-apply (actual-value (operator exp) env)
+                 (operands exp) env))
+    ))
+
+; --- lazy-core.scm included for tests ---
 (define apply-in-underlying-scheme apply)
 
 ; ***** 4.1.1 The Core of the Evaluator *****
@@ -58,6 +92,14 @@
          (eval (letrec->let exp) env))
         ((let*? exp)
          (eval (let*->nested-lets exp) env))
+        ; special rule for representation of lazy pairs
+        ((cons? exp)
+         (cons 'lazy-pair
+               (m-apply (actual-value (operator exp) env) (operands exp) env)))
+        ; special rule for displaying lazy pairs
+        ((display? exp) (eval-display exp env))
+        ; special rule for evaluating lazy pairs
+        ((lazy-pair-exp? exp) (eval (cdr exp) env))
         ((application? exp)
          (m-apply (actual-value (operator exp) env)
                   (operands exp) env))
@@ -126,6 +168,39 @@
     env)
   'ok)
 
+; and-or.scm
+(define (eval-and exp env)
+  (define (eval-and-exps exps last-val)
+    (if (null? exps)
+        last-val
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              (eval-and-exps (cdr exps) val)
+              'false
+              )
+          )
+        )
+    )
+
+  (eval-and-exps (and-exps exp) 'true)
+  )
+
+(define (eval-or exp env)
+  (define (eval-or-exps exps)
+    (if (null? exps)
+        'false
+        (let ((val (eval (car exps) env)))
+          (if (true? val)
+              val
+              (eval-or-exps (cdr exps))
+              )
+          )
+        )
+    )
+
+  (eval-or-exps (or-exps exp))
+  )
+
 ; if.scm
 (define (eval-if exp env)
   (if (true? (actual-value (if-predicate exp) env))
@@ -180,14 +255,13 @@
 
 ; 4.1.4 Running the Evaluator as a Program
 (define primitive-procedures
-  (list (list 'scheme-car car)
-        (list 'scheme-cdr cdr)
-        (list 'scheme-cons cons)
+  (list (list 'car car)
+        (list 'cdr cdr)
+        (list 'cons cons)
         (list 'null? null?)
         (list 'list list)
-        (list 'pair? pair?)
         (list 'newline newline)
-        (list 'scheme-display display)
+        (list 'display display)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -197,10 +271,6 @@
         (list '< <)
         (list '>= >=)
         (list '<= <=)
-        (list 'length length)
-        (list 'eq? eq?)
-        (list 'not not)
-        (list 'equal? equal?)
         ;⟨more primitives⟩
         ))
 (define (primitive-procedure-names)
@@ -229,16 +299,6 @@
 (define input-prompt ";;; L-Eval input:")
 (define output-prompt ";;; L-Eval value:")
 
-(define (driver-loop env)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output
-           (actual-value
-            input env)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop env))
-
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
 (define (announce-output string)
@@ -250,103 +310,46 @@
                      (procedure-body object)
                      '<procedure-env>))
       (display object)))
-; === END OF lazy-core.scm ===
+; ----------------------------------------------------------------
 
-; === lazy-lists.scm with slight modification to support new lazy pairs representation ===
-(define lazy-cons
-  (list
-   ; (define (cons x y) (cons 'lazy-pair (lambda (m) (m x y))))
-   (make-definition
-    (list 'cons 'x 'y)
-    (make-application 'scheme-cons
-                      (list "lazy-pair" (make-lambda (list 'm) (list (make-application 'm (list 'x 'y)))))))
-   ; (define (car z) ((scheme-cdr z) (lambda (p q) p)))
-   (make-definition
-    (list 'car 'z)
-    (make-application (make-application 'scheme-cdr (list 'z)) (list (make-lambda (list 'p 'q) (list 'p)))))
-   ; (define (cdr z) ((scheme-cdr z) (lambda (p q) q)))
-   (make-definition
-    (list 'cdr 'z)
-    (make-application (make-application 'scheme-cdr (list 'z)) (list (make-lambda (list 'p 'q) (list 'q)))))
-   ))
-; === END OF lazy-lists.scm with slight modifications ===
-
-; === TEST ===
 (define test-env (setup-environment))
 
-; define null as a variable
-(eval (make-definition 'nil '()) test-env)
-
+; --- lazy-lists.scm ---
+(define lazy-cons
+  (list
+   ; (define (cons x y) (lambda (m) (m x y)))
+   (make-definition
+    (list 'cons 'x 'y)
+    (make-lambda (list 'm) (list (make-application 'm (list 'x 'y)))))
+   ; (define (car z) (z (lambda (p q) p)))
+   (make-definition
+    (list 'car 'z)
+    (make-application 'z (list (make-lambda (list 'p 'q) (list 'p)))))
+   ; (define (cdr z) (z (lambda (p q) q)))
+   (make-definition
+    (list 'cdr 'z)
+    (make-application 'z (list (make-lambda (list 'p 'q) (list 'q)))))
+   ))
 (map (lambda (exp) (eval exp test-env)) lazy-cons)
+; ---------------------
 
-(define (run) (driver-loop test-env))
-; setup lazy cons, car & cdr
-(map (lambda (exp) (eval exp test-env)) lazy-cons)
-; define a primitive pair
+; driver loop
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output
+           (actual-value
+            input test-env)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
+
+; primitive pair
 (define pp-def (make-definition 'pp (make-application 'cons (list 1 2))))
 (eval pp-def test-env)
-; define a list of 12 elements INSIDE the evaluator while testing, cause doing it manually is a pain.
-;(define lst (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 (cons 6 (cons 7 (cons 8 (cons 9 (cons 10 (cons 11 (cons 12)))))))))))))
-
-; === custom display procedures defined INSIDE the evaluator ===
-;(define (lazy-pair? obj)
-;  (if (pair? obj)
-;      (equal? "lazy-pair" (scheme-car obj))
-;      false))
-(define lazy-pair?-def
-  (make-definition
-   (list 'lazy-pair? 'obj)
-   ;body
-   (make-if (make-application 'pair? (list 'obj))
-            (make-application 'equal? (list "lazy-pair" (make-application 'scheme-car (list 'obj))))
-            'false)))
-(eval lazy-pair?-def test-env)
-
-;(define (display obj)
-;  (if (pair? obj)
-;      (if (equal? "lazy-pair" (scheme-car obj))
-;          (display-lazy-pair obj)
-;          (scheme-display obj))
-;      (scheme-display obj)))
-(define display-def
-  (make-definition
-   (list 'display 'obj)
-   ;body
-   (make-if (make-application 'pair? (list 'obj))
-            (make-if (make-application 'lazy-pair? (list 'obj))
-                     (make-application 'display-lazy-pair (list 'obj))
-                     (make-application 'scheme-display (list 'obj)))
-            (make-application 'scheme-display (list 'obj)))))
-(eval display-def test-env)
-
-;(define (display-lazy-pair p)
-;  (define (iter lp count)
-;    (if (= 10 count)
-;        (scheme-cons "..." '())
-;        (if (lazy-pair? lp)
-;            (scheme-cons (car lp) (iter (cdr lp) (+ count 1)))
-;            (if (null? lp)
-;                '()
-;                (scheme-cons lp '())))))
-;  (iter p 0))
-(define display-lazy-pair-def
-  (make-definition
-   (list 'display-lazy-pair 'p)
-   ;body
-   (make-definition
-    (list 'iter 'lp 'count)
-    ;iter body
-    (make-if (make-application '= (list 10 'count))
-             (make-application 'scheme-cons (list "..." '()))
-             (make-if (make-application 'lazy-pair? (list 'lp))
-                      (make-application 'scheme-cons (list
-                                                      (make-application 'car (list 'lp))
-                                                      (make-application 'iter
-                                                                        (list (make-application 'cdr (list 'lp))
-                                                                              (make-application '+ (list 'count 1))))))
-                      (make-if (make-application 'null? (list 'lp))
-                               '()
-                               (make-application 'scheme-cons (list 'lp '()))))))
-   (make-application 'iter (list 'p 0))))
-(eval display-lazy-pair-def test-env)
-
+; test func
+(define test-func-def (make-definition
+                       (list 'func 'x)
+                       (list (make-application 'newline (list))
+                             (make-application 'display (list "func")) 'x)))
+(eval test-func-def test-env)
