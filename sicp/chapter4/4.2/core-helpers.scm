@@ -7,6 +7,7 @@
 (define (self-evaluating? exp)
   (cond ((number? exp) true)
         ((string? exp) true)
+        ((null? exp) '())
         (else false)))
 
 ; Variables are represented by symbols
