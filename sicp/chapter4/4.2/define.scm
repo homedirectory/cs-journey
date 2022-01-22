@@ -25,9 +25,12 @@
       (caddr exp)
       (make-lambda (cdadr exp) ; formal parameters
                    (cddr exp)))) ; body
-(define (make-definition var value)
-  (list 'define var value)
-  )
+
+; make-definition is used only in the underlying scheme (e.g. test purposes)
+(define (make-definition var . exps)
+  (if (= 1 (length exps))
+      (list 'define var (car exps))
+      (append (list 'define var) exps)))
 
 (define (define-variable! var val env)
   (let ((frame (first-frame env)))
