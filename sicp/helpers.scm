@@ -75,6 +75,15 @@
             (cons first (filter pred rest))
             (filter pred rest)))))
 
+(define (list-ref n lst)
+  ; indexing starts at 0
+  (define (iter l c)
+    (cond ((null? l)
+           (error "list-ref: n > list length"))
+          ((= c n) (car l))
+          (else (iter (cdr l) (inc c)))))
+  (iter lst 0))
+
 ;---------------------------------------------
  
 (#%provide (all-defined))
