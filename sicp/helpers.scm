@@ -55,6 +55,26 @@
       (eq? (car exp) tag)
       false))
 
+(define (flatten items)
+  ; items: list
+  (cond ((null? items) '())
+        ((pair? items)
+         (let ((car-flat (flatten (car items)))
+               (cdr-flat (flatten (cdr items))))
+           (append car-flat cdr-flat)))
+        (else (list items))))
+
+(define (filter pred items)
+  ; items: list
+  ; pred: procedure
+  (if (null? items)
+      '()
+      (let ((first (car items))
+            (rest (cdr items)))
+        (if (pred first)
+            (cons first (filter pred rest))
+            (filter pred rest)))))
+
 ;---------------------------------------------
  
-(#%provide print square average sum expt divisible? tagged-list?)
+(#%provide (all-defined))
