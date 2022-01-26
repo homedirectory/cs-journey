@@ -79,10 +79,18 @@
   ; indexing starts at 0
   (define (iter l c)
     (cond ((null? l)
-           (error "list-ref: n > list length"))
+           (error "list-ref: n >= list length"))
           ((= c n) (car l))
           (else (iter (cdr l) (inc c)))))
   (iter lst 0))
+
+(define (list-replace-at n item lst)
+  (define (iter l c new-lst)
+    (cond ((null? l)
+           (error "list-replace-at: n >= list length"))
+          ((= c n) (append (append new-lst (list item)) (cdr l)))
+          (else (iter (cdr l) (inc c) (append new-lst (list (car l)))))))
+  (iter lst 0 '()))
 
 ;---------------------------------------------
  
