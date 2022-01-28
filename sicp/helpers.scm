@@ -92,6 +92,34 @@
           (else (iter (cdr l) (inc c) (append new-lst (list (car l)))))))
   (iter lst 0 '()))
 
+(define (list-insert-at n item lst)
+  ; items are shifted to the right
+  ; e.g. for [1, 2, 3] insert 4 at 1 results in [1, 4, 2, 3]
+  ; to insert at the end, n = (length lst) would have to be specified
+  (define (iter l c)
+    (if (= c n)
+        (cons item l)
+        (cons (car l) (iter (cdr l) (inc c)))))
+  
+  (cond ((> n (length lst)) (error "list-insert-at: n > list length"))
+        ((= n (length lst)) (append lst (list item)))
+        ((= n 0) (cons item lst))
+        (else (iter lst 0))))
+
+(define (list-append-at n items lst)
+  ; items are shifted to the right
+  ; e.g. for [1, 2, 3] insert 4 at 1 results in [1, 4, 2, 3]
+  ; to insert at the end, n = (length lst) would have to be specified
+  (define (iter l c)
+    (if (= c n)
+        (append items l)
+        (cons (car l) (iter (cdr l) (inc c)))))
+  
+  (cond ((> n (length lst)) (error "list-insert-at: n > list length"))
+        ((= n (length lst)) (append lst items))
+        ((= n 0) (append items lst))
+        (else (iter lst 0))))
+
 ;---------------------------------------------
  
 (#%provide (all-defined))
