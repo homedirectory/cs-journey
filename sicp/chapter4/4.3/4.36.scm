@@ -43,6 +43,14 @@
 ;     - (i (cdr (pairs j k)))
 ;     - (triples i+1 j+1 k+1)
 
+; pairs:
+; (1 1) (1 2) (2 2) (1 3) (2 3) (1 4) (3 3) (1 5) (2 4) (1 6) (3 4) (1 7) (2 5)
+; ----
+; (1 1)
+; (1 2) (2 2)
+; (1 3) (2 3) (3 3)
+; (1 4) (2 4) (3 4) (4 4)
+
 (define (a-pythagorean-triple-from n)
   (let ((triple (amb-triple n n n)))
     (require (pythagorean-triple? triple))
@@ -54,17 +62,71 @@
         (k (caddr t)))
     (= (+ (* i i) (* j j)) (* k k))))
 
-(define (interleave proc1 proc2)
-  (amb (proc1) (interleave proc2 proc1)))
+(define (amb-pair n1 n2)
+  (define (move i j next-list)
+    (cond ((null? next-list)
+           (amb (list i j)
+                (move i (inc j) (list (cons (inc i) (inc j))))))
+          ((= i j)
+           (let ((new-next-list (list (cons i (inc j)) (cons (inc i) (inc j)))))
+             (if (= 1 (length next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            new-next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list-append-at (dec i) new-next-list (cdr next-list)))))))
+          (else
+           (let ((next-pair (cons i (inc j))))
+             (if (= 1 (length next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list next-pair)))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list-insert-at (dec i) next-pair (cdr next-list)))))))
+          )
+    )
+  (move n1 n2 '()))
 
-(define (amb-pair i j)
-  (amb (list i j)
-       (interleave
-        ((lambda (x) (lambda () (set! x (inc x)) (list i x))) j)
-        (amb-pair (inc i) (inc j)))))
+; triples:
+; (1 1 1) (1 1 2) (2 2 2) (1 2 2) (2 2 3) (1 1 3) (3 3 3) (1 2 3) (2 3 3) (1 1 4)
+; ----
+; (1 1 1)
+; (1 1 2) (2 2 2)
+; (1 2 2) (2 2 3) (3 3 3)
+; (1 1 3) (2 3 3) (3 3 4) (4 4 4)
 
-(define (amb-triple i j k)
-  (amb (list i j k)
-       (interleave
-        (list i (amb-pair j k)) ; need to take cdr of pairs
-        (amb-triple (inc i) (inc j) (inc k)))))
+; Unfortunately amb-triple can not be expressed in terms of amb-pair
+
+(define (amb-triple n1 n2 n3)
+  (define (move i j k next-list)
+    (cond ((null? next-list)
+           (amb (list i j k)
+                (move i j (inc k) (list (list (inc i) (inc j) (inc k))))))
+          ((= i j k)
+           (let ((new-next-list (list (list i j (inc k))
+                                      (list (inc i) (inc j) (inc k)))))
+             (if (= 1 (length next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            new-next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list-append-at (dec i) new-next-list (cdr next-list)))))))
+          (else
+           (let ((next-pair (cons i (inc j))))
+             (if (= 1 (length next-list))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list next-pair)))
+                 (amb (list i j)
+                      (move (caar next-list) (cdar next-list)
+                            (list-insert-at (dec i) next-pair (cdr next-list)))))))
+          )
+    )
+  (move n1 n2 n3 '()))
+
+
+
+

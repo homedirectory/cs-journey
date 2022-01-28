@@ -18,3 +18,6 @@
 (define (an-integer-between low high)
   (require (<= low high))
   (amb low (an-integer-between (inc low) high)))
+
+(define (an-integer-starting-from n)
+  (amb n (an-integer-starting-from (+ n 1))))
