@@ -101,8 +101,7 @@
         (cons item l)
         (cons (car l) (iter (cdr l) (inc c)))))
   
-  (cond ((> n (length lst)) (error "list-insert-at: n > list length"))
-        ((= n (length lst)) (append lst (list item)))
+  (cond ((>= n (length lst)) (append lst (list item)))
         ((= n 0) (cons item lst))
         (else (iter lst 0))))
 
@@ -115,8 +114,7 @@
         (append items l)
         (cons (car l) (iter (cdr l) (inc c)))))
   
-  (cond ((> n (length lst)) (error "list-insert-at: n > list length"))
-        ((= n (length lst)) (append lst items))
+  (cond ((>= n (length lst)) (append lst items))
         ((= n 0) (append items lst))
         (else (iter lst 0))))
 
