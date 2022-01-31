@@ -2,7 +2,8 @@
 
 (#%require "../../helpers.scm" "core-helpers.scm"
            "define.scm" "if.scm" "lambda.scm" "begin.scm"
-           "cond.scm" "env.scm" "let.scm" "amb.scm")
+           "cond.scm" "env.scm" "let.scm" "and-or.scm"
+           "amb.scm" "apply.scm")
 
 ; We will construct the amb evaluator for nondeterministic Scheme by
 ; modifying the analyzing evaluator. The difference between the interpretation
@@ -43,7 +44,10 @@
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
+        ((and? exp) (analyze (and->if exp)))
+        ((or? exp) (analyze (or->if exp)))
         ((let? exp) (analyze-application (let->combination exp)))
+        ((apply? exp) (analyze-application (apply->application exp)))
         ((application? exp) (analyze-application exp))
         (else (error "Unknown expression type: ANALYZE" exp))))
 
