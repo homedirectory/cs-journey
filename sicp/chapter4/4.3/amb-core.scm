@@ -47,7 +47,7 @@
         ((and? exp) (analyze (and->if exp)))
         ((or? exp) (analyze (or->if exp)))
         ((let? exp) (analyze-application (let->combination exp)))
-        ((apply? exp) (analyze-application (apply->application exp)))
+        ((apply? exp) (analyze (apply->application exp)))
         ((application? exp) (analyze-application exp))
         (else (error "Unknown expression type: ANALYZE" exp))))
 
