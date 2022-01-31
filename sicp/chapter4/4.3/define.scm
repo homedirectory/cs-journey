@@ -25,8 +25,8 @@
       (caddr exp)
       (make-lambda (cdadr exp) ; formal parameters
                    (cddr exp)))) ; body
-(define (make-definition var value)
-  (list 'define var value)
+(define (make-definition var . exps)
+  (append (list 'define var ) exps)
   )
 
 (define (define-variable! var val env)
