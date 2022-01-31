@@ -232,7 +232,7 @@
         (list 'dec dec)
         (list 'length length)
         (list 'member member)
-        (list 'abs abs)
+        (list 'abs abs) (list 'min min) (list 'max max)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -337,14 +337,14 @@
    ;           (iter (cdr l) (inc c))))
    ;     (iter lst 0))
    (make-definition (list 'list-ref 'n 'lst)
-                     (make-definition (list 'iter 'l 'c)
-                                      (make-if (make-application '= (list 'c 'n))
-                                               (make-application 'car (list 'l))
-                                               (make-application 'iter
-                                                                 (list
-                                                                  (make-application 'cdr (list 'l))
-                                                                  (make-application 'inc (list 'c))))))
-                     (make-application 'iter (list 'lst 0)))
+                    (make-definition (list 'iter 'l 'c)
+                                     (make-if (make-application '= (list 'c 'n))
+                                              (make-application 'car (list 'l))
+                                              (make-application 'iter
+                                                                (list
+                                                                 (make-application 'cdr (list 'l))
+                                                                 (make-application 'inc (list 'c))))))
+                    (make-application 'iter (list 'lst 0)))
    ))
 
 (map (lambda (p) (ambeval p the-global-environment

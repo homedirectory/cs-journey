@@ -51,7 +51,7 @@
 
 (define (multiple-dwelling-opt)
   (let ((cooper (amb 1 2 3 4 5))
-        (miller (amb 1 2 3 4 5))
+        (miller (amb 1 2 3 4 5)))
         (require (> miller cooper))
         (let ((fletcher (amb 1 2 3 4 5))
               (smith (amb 1 2 3 4 5)))
@@ -67,5 +67,5 @@
             (list (list 'baker baker)
                   (list 'cooper cooper)
                   (list 'fletcher fletcher) (list 'miller miller)
-                  (list 'smith smith)))))))
+                  (list 'smith smith))))))
 

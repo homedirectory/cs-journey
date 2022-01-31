@@ -59,16 +59,17 @@
         (row (- size k 1)))
     (iter k col (min row col) '())))
 
-(define (safe-last? board pos)
+(define (safe-last? board pos board-size)
   ; checks whether the queen in the last column is safe
   (let ((size (length board)))
-    (if (< 2 size)
+    (if (< size 2)
         #t
-        (let ((diag-left-up (board-diag-left-up-from pos board))
-              (diag-left-down (board-diag-left-down-from pos board size)))
-          (and (= 1 (sum (board-row (- size 1) board)))
-               (or (= 0 (length diag-left-up)) (= 1 (sum diag-left-up)))
-               (or (= 0 (length diag-left-down)) (= 1 (sum diag-left-down))))))))
+        (let ((row (board-row pos board))
+              (diag-left-up (board-diag-left-up-from pos board))
+              (diag-left-down (board-diag-left-down-from pos board board-size)))
+          (and (= 1 (sum row))
+               (or (= 0 (length diag-left-up)) (= 0 (sum diag-left-up)))
+               (or (= 0 (length diag-left-down)) (= 0 (sum diag-left-down))))))))
 
 (define (queens-puzzle n)
   (define (iter k board)
@@ -76,7 +77,7 @@
         board
         (let ((queen-pos (an-integer-between 0 (- n 1))))
           (let ((new-board (adjoin-pos queen-pos board n)))
-            (require (safe-last? new-board queen-pos))
+            (require (safe-last? new-board queen-pos n))
             (iter (+ k 1) new-board))
           )))
   (iter 0 '()))

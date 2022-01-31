@@ -33,7 +33,7 @@
         ; it item != place, then there is a contradiction
         (if (or (= -1 item) (= place item))
             (list-replace-at girl-index place girls)
-            #f))))
+            false))))
   (define (make-false-check girl-index place)
     (lambda (girls)
       (not (= place (list-ref girl-index girls)))))
@@ -56,13 +56,10 @@
           girls
           (if ((car checks) girls)
               (check-false-statements (cdr checks) girls)
-              (begin
-                (print girls)
-                '()))))
+              '())))
     (define (iter stats girls false-checks)
       ; girls: list represents the schoolgirls' placements in the following order:
       ; [Betty, Ethel, Joan, Kitty, Mary]
-      (print girls)
       (cond ((not girls) '())
             ((null? stats)
              (if (distinct? girls)

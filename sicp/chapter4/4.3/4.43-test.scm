@@ -40,30 +40,30 @@
         (else (father-of-daughter-has-yacht daughter yacht (cdr fathers-d) (cdr fathers-y)))))
 
 (define (yacht-puzzle)
-  (let ((moore-d (apply amb daughters))
-        (moore-y (apply amb daughters)))
+  (let ((moore-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+        (moore-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
     ; moore is mary ann's father
     (require (equal? moore-d "Mary Ann"))
     ; moore owns lorna yacht
     (require (equal? moore-y "Lorna"))
-    (let ((barnacle-d (apply amb daughters))
-          (barnacle-y (apply amb daughters)))
+    (let ((barnacle-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+          (barnacle-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
       ; barnacle owns gabrielle yacht
       (require (equal? barnacle-y "Gabrielle"))
       ; barnacle is melissa's father
       (require (equal? barnacle-d "Melissa"))
-      (let ((hall-y (apply amb daughters))
-            (hall-d (apply amb daughters)))
+      (let ((hall-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+            (hall-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
         ; hall owns rosalind yacht
         (require (equal? hall-y "Rosalind"))
         (require (distinct? (list hall-d hall-y)))
-        (let ((downing-d (apply amb daughters))
-              (downing-y (apply amb daughters)))
+        (let ((downing-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+              (downing-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
           ; downing owns melissa yacht
           (require (equal? downing-y "Melissa"))
           (require (distinct? (list downing-d downing-y)))
-          (let ((parker-d (apply amb daughters))
-                (parker-y (apply amb daughters)))
+          (let ((parker-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+                (parker-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
             ; parker cannot be gabrielle's father
             (require (not (equal? parker-d "Gabrielle")))
             (require (distinct? (list parker-d parker-y)))
@@ -73,50 +73,37 @@
               (require (father-of-daughter-has-yacht "Gabrielle" parker-d fathers-d fathers-y))
               (require (distinct? fathers-d))
               (require (distinct? fathers-y))
-              (map (lambda (father daughter yacht) (list father daughter yacht))
-                   fathers fathers-d fathers-y)
+              (list fathers fathers-d fathers-y)
               ))))))
   )
 
 (define solutions (yacht-puzzle))
 
 ; Determine how many solutions there are if we are not told that Mary Ann’s last name is Moore.
-
-; There are 2 of them:
-; 1. as above
-; 2.
-; Father          | Daughter    | Yacht
-; ----------------|-------------|----------
-; Mr. Moore       | Gabrielle   | Lorna
-; Mr. Hall        | Mary Ann    | Rosalind
-; Colonel Downing | Rosalind    | Melissa
-; Sir Barnacle    | Melissa     | Gabrielle
-; Dr. Parker      | Lorna       | Mary Ann
-
 (define (yacht-puzzle-alt)
-  (let ((moore-d (apply amb daughters))
-        (moore-y (apply amb daughters)))
+  (let ((moore-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+        (moore-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
     ; moore owns lorna yacht
     (require (equal? moore-y "Lorna"))
     (require (distinct? (list moore-d moore-y)))
-    (let ((barnacle-d (apply amb daughters))
-          (barnacle-y (apply amb daughters)))
+    (let ((barnacle-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+          (barnacle-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
       ; barnacle owns gabrielle yacht
       (require (equal? barnacle-y "Gabrielle"))
       ; barnacle is melissa's father
       (require (equal? barnacle-d "Melissa"))
-      (let ((hall-y (apply amb daughters))
-            (hall-d (apply amb daughters)))
+      (let ((hall-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+            (hall-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
         ; hall owns rosalind yacht
         (require (equal? hall-y "Rosalind"))
         (require (distinct? (list hall-d hall-y)))
-        (let ((downing-d (apply amb daughters))
-              (downing-y (apply amb daughters)))
+        (let ((downing-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+              (downing-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
           ; downing owns melissa yacht
           (require (equal? downing-y "Melissa"))
           (require (distinct? (list downing-d downing-y)))
-          (let ((parker-d (apply amb daughters))
-                (parker-y (apply amb daughters)))
+          (let ((parker-d (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind")))
+                (parker-y (apply amb (list "Mary Ann" "Gabrielle" "Lorna" "Melissa" "Rosalind"))))
             ; parker cannot be gabrielle's father
             (require (not (equal? parker-d "Gabrielle")))
             (require (distinct? (list parker-d parker-y)))
@@ -126,8 +113,7 @@
               (require (father-of-daughter-has-yacht "Gabrielle" parker-d fathers-d fathers-y))
               (require (distinct? fathers-d))
               (require (distinct? fathers-y))
-              (map (lambda (father daughter yacht) (list father daughter yacht))
-                   fathers fathers-d fathers-y)
+              (list fathers fathers-d fathers-y)
               ))))))
   )
 
