@@ -231,6 +231,8 @@
         (list 'inc inc)
         (list 'dec dec)
         (list 'length length)
+        (list 'member member)
+        (list 'abs abs)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -328,22 +330,33 @@
                                        (make-application
                                         'an-integer-starting-from
                                         (list (make-application '+ (list 'n 1)))))))
-;   (define (list-insert-at n item lst)
-;     (define (iter l c)
-;       (if (= c n)
-;           (cons item l)
-;           (cons (car l) (iter (cdr l) (inc c)))))
-;  
-;     (cond ((> n (length lst)) (error "list-insert-at: n > list length"))
-;           ((= n (length lst)) (append lst (list item)))
-;           ((= n 0) (cons item lst))
-;           (else (iter lst 0))))
+   ;   (define (list-ref n lst)
+   ;     (define (iter l c)
+   ;       (if (= c n)
+   ;           (car l)
+   ;           (iter (cdr l) (inc c))))
+   ;     (iter lst 0))
+   (make-definition (list 'list-ref 'n 'lst)
+                     (make-definition (list 'iter 'l 'c)
+                                      (make-if (make-application '= (list 'c 'n))
+                                               (make-application 'car (list 'l))
+                                               (make-application 'iter
+                                                                 (list
+                                                                  (make-application 'cdr (list 'l))
+                                                                  (make-application 'inc (list 'c))))))
+                     (make-application 'iter (list 'lst 0)))
    ))
 
 (map (lambda (p) (ambeval p the-global-environment
                           (lambda (val fail) 'ok)
                           (lambda () 'fail)))
      installed-procedures)
+
+; == TEST ==
+(define (ambeval-test exp env)
+  (ambeval exp env
+           (lambda (val fail) val)
+           (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
 (#%provide (all-defined))
