@@ -22,19 +22,19 @@
 
 (define adjectives '(adj blue large pretty natural boring))
 
-(define (parse-adjectives)
-  (define (maybe-extend adj-list)
-    (amb adj-list
-         (maybe-extend (append adj-list
-                               (list (parse-word adjectives))))))
-  (maybe-extend (list (parse-word adjectives))))
+(define (parse-article)
+  ; an article may be extended with adjectives
+  (define (maybe-extend article)
+    (amb article
+         (maybe-extend
+          (list article
+                (parse-word adjectives)))))
+  (maybe-extend (parse-word articles)))
 
 (define (parse-simple-noun-phrase)
-  ; append is needed since parse-adjectives returns a list
-  (append
-   (append (list 'simple-noun-phrase (parse-word articles))
-           (parse-adjectives))
-   (list (parse-word nouns))))
+  (list 'simple-noun-phrase
+        (parse-article)
+        (parse-word nouns)))
 
 
 ; Adverbs might be placed right after a verb.
@@ -47,23 +47,27 @@
 
 (define adverbs '(adverb slowly peacefully obediently gracefully unexpectedly))
 
-(define (parse-adverbs)
-  ; returns a list
-  (define (maybe-extend adv-list)
-    (amb adv-list
-         (maybe-extend (append adv-list
-                               (list (parse-word adverbs))))))
-  (maybe-extend (list (parse-word adverbs))))
+(define (parse-adverb)
+  ; an adverb might be extended with other adverbs
+  (define (maybe-extend adverb)
+    (amb adverb
+         (maybe-extend (list adverb
+                             (parse-word adverbs)))))
+  (maybe-extend (parse-word adverbs)))
+
+(define (parse-verb)
+  ; a verb might be extended with an adverb
+  (define (maybe-extend verb)
+    (amb verb
+         (maybe-extend (list verb
+                             (parse-adverb)))))
+  (maybe-extend (parse-word verbs)))
 
 (define (parse-verb-phrase)
   (define (maybe-extend verb-phrase)
     (amb verb-phrase
          (maybe-extend
-          (append
-           (append (list 'verb-phrase verb-phrase)
-                   (parse-adverbs))
-           (list (parse-prepositional-phrase))))))
-  (maybe-extend (parse-word verbs)))
-
-
-
+          (list 'verb-phrase
+                verb-phrase
+                (parse-prepositional-phrase)))))
+  (maybe-extend (parse-verb)))

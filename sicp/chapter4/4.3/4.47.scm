@@ -58,6 +58,10 @@
 
 ; I think that this proposed approach should work as well as the original one.
 
+; After having ran the program with the proposed implementation of parse-verb-phrase
+; it was made clear for me that the proposed approach fails, since it enters an
+; infinite recursion loop in case amb fails to find any more values. The cause
+; is the call to parse-verb-phrase procedure inside the list construction.
 
 
 
