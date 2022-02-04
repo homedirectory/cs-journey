@@ -6,6 +6,23 @@
            "amb.scm" "apply.scm")
 
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+; 4.52
+(define (if-fail? exp)
+  (tagged-list? exp 'if-fail))
+(define (if-fail-exp exp)
+  (cadr exp))
+(define (if-fail-alt exp)
+  (caddr exp))
+
+(define (analyze-if-fail exp)
+  (lambda (env succeed fail)
+    ((analyze (if-fail-exp exp))
+     env succeed 
+     (lambda ()
+       ((analyze (if-fail-alt exp))
+        env succeed fail)))))
+
+; 4.51
 (define (set!? exp)
   (tagged-list? exp 'set!))
 (define (permanent-set!? exp)
@@ -53,6 +70,7 @@
         ((assignment? exp) (analyze-assignment exp))
         ((definition? exp) (analyze-definition exp))
         ((if? exp) (analyze-if exp))
+        ((if-fail? exp) (analyze-if-fail exp)) ; +++
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
@@ -227,6 +245,7 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
+        (list 'even? even?) (list 'remainder remainder)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -338,10 +357,29 @@
            (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
-(ambeval-test '(define count 0) the-global-environment)
+(map ambeval-definition
+     (list '(define (prime-sum-pair list1 list2)
+              (let ((a (an-element-of list1))
+                    (b (an-element-of list2)))
+                (require (prime? (+ a b)))
+                (list a b)))
+           '(define (square x) (* x x))
+           '(define (next x)
+              (cond ((= x 2) 3)
+                    (else (+ x 2))))
+           '(define (smallest-divisor n) (find-divisor n 2))
+           '(define (find-divisor n test-divisor)
+              (cond ((> (square test-divisor) n) n)
+                    ((divides? test-divisor n) test-divisor)
+                    (else (find-divisor n (next test-divisor)))))
+           '(define (divides? a b) (= (remainder b a) 0))
+           '(define (prime? n)
+              (= n (smallest-divisor n)))))
 
-;(let ((x (an-element-of '(a b c)))
-;      (y (an-element-of '(a b c))))
-;  (permanent-set! count (+ count 1))
-;  (require (not (eq? x y)))
-;  (list x y count))
+;(let ((pairs '()))
+;  (if-fail
+;   (let ((p (prime-sum-pair '(1 3 5 8)
+;                            '(20 35 110))))
+;     (permanent-set! pairs (cons p pairs))
+;     (amb))
+;   pairs))

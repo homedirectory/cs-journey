@@ -6,47 +6,28 @@
            "amb.scm" "apply.scm")
 
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-(define (set!? exp)
-  (tagged-list? exp 'set!))
-(define (permanent-set!? exp)
-  (tagged-list? exp 'permanent-set!))
+(define (require? exp)
+  (tagged-list? exp 'require))
+(define (require-predicate exp)
+  (cadr exp))
 
-(define (assignment? exp)
-  (or (set!? exp)
-      (permanent-set!? exp)))
-
-(define (analyze-assignment exp)
-  (let ((var (assignment-variable exp))
-        (vproc (analyze (assignment-value exp))))
-    (if (set!? exp)
-        (lambda (env succeed fail)
-          (vproc env
-                 (lambda (val fail2)
-                   ; *1*
-                   (let ((old-value (lookup-variable-value var env)))
-                     (set-variable-value! var val env)
-                     (succeed 'ok
-                              (lambda ()
-                                ; *2*
-                                (set-variable-value!
-                                 var old-value env)
-                                (fail2)))))
-                 fail))
-        (lambda (env succeed fail)
-          (vproc env
-                 (lambda (val fail2)
-                   ; *1*
-                   (let ((old-value (lookup-variable-value var env)))
-                     (set-variable-value! var val env)
-                     (succeed 'ok fail2)))
-                 fail)))))
+(define (analyze-require exp)
+  (let ((pproc (analyze (require-predicate exp))))
+    (lambda (env succeed fail)
+      (pproc env
+             (lambda (pred-value fail2)
+               (if (false? pred-value)
+                   (fail2)
+                   (succeed 'ok fail2)))
+             fail))))
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 (define (ambeval exp env succeed fail)
   ((analyze exp) env succeed fail))
 
 (define (analyze exp)
-  (cond ((amb? exp) (analyze-amb exp))
+  (cond ((require? exp) (analyze-require exp)) ;+++
+        ((amb? exp) (analyze-amb exp))
         ((self-evaluating? exp) (analyze-self-evaluating exp))
         ((quoted? exp) (analyze-quoted exp))
         ((variable? exp) (analyze-variable exp))
@@ -89,6 +70,24 @@
              (lambda (val fail2)
                (define-variable! var val env)
                (succeed 'ok fail2))
+             fail))))
+
+; variable assignment
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze (assignment-value exp))))
+    (lambda (env succeed fail)
+      (vproc env
+             (lambda (val fail2)
+               ; *1*
+               (let ((old-value (lookup-variable-value var env)))
+                 (set-variable-value! var val env)
+                 (succeed 'ok
+                          (lambda ()
+                            ; *2*
+                            (set-variable-value!
+                             var old-value env)
+                            (fail2)))))
              fail))))
 
 (define (make-procedure parameters body-proc env)
@@ -227,6 +226,7 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
+        (list 'even? even?) (list 'remainder remainder)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -338,10 +338,8 @@
            (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
-(ambeval-test '(define count 0) the-global-environment)
+;(let ((x (amb 2 4 5 6)))
+;  (require (even? x))
+;  x)
 
-;(let ((x (an-element-of '(a b c)))
-;      (y (an-element-of '(a b c))))
-;  (permanent-set! count (+ count 1))
-;  (require (not (eq? x y)))
-;  (list x y count))
+
