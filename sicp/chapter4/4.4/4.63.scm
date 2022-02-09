@@ -41,7 +41,7 @@
           (wife-husband-son ?w ?f ?s)))
 
 ; grandson of Cain
-(grandsons ?s Cain)
+(grandsons Cain ?s)
 
 ; sons of Lamech
 (sons Lamech ?s)

@@ -16,7 +16,7 @@
 ; After answering, the system goes into an infinite loop. Explain why.
 ;-------------------------------------------------------------------------------
 
-; Because the recursive call to outranked-by comes before (supervisor ?staff-person ?middle-manager),
+; The recursive call to outranked-by comes before (supervisor ?staff-person ?middle-manager),
 ; thus there is no termination point, as the rule will try to recursively call itself each time to find
 ; the intersection:
 ;(and (outranked-by ?middle-manager ?boss)
