@@ -5,30 +5,22 @@
            "cond.scm" "env.scm" "let.scm" "and-or.scm"
            "amb.scm" "apply.scm")
 
-; We will construct the amb evaluator for nondeterministic Scheme by
-; modifying the analyzing evaluator. The difference between the interpretation
-; of ordinary Scheme and the interpretation of nondeterministic Scheme will be
-; entirely in the execution procedures.
-; Backtracking is implemented by passing 3 arguments to the execution procedures,
-; instead of 1 argument, that is environment, as for the ordinary evaluator.
-; The 3 arguments are: environment, success continuation, failure continuation.
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+(define (if-fail? exp)
+  (tagged-list? exp 'if-fail))
+(define (if-fail-exp exp)
+  (cadr exp))
+(define (if-fail-alt exp)
+  (caddr exp))
 
-; Success continuation
-; - is called in case the evaluation results in a value
-; - is a procedure of 2 arguments:
-;   - the value just obtained
-;   - another failure continuation to be used in case the obtained value
-;     leads to a failure
-
-; Failure continuation
-; - is called in case of a dead end
-; - is a procedure of NO arguments
-
-; General form of an execution procedure:
-; (lambda (env succeed fail)
-;   ; succeed is (lambda (value fail) ...)
-;   ; fail is (lambda () ...)
-;   ...)
+(define (analyze-if-fail exp)
+  (lambda (env succeed fail)
+    ((analyze (if-fail-exp exp))
+     env succeed 
+     (lambda ()
+       ((analyze (if-fail-alt exp))
+        env succeed fail)))))
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 (define (ambeval exp env succeed fail)
   ((analyze exp) env succeed fail))
@@ -41,6 +33,7 @@
         ((assignment? exp) (analyze-assignment exp))
         ((definition? exp) (analyze-definition exp))
         ((if? exp) (analyze-if exp))
+        ((if-fail? exp) (analyze-if-fail exp)) ; +++
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
@@ -67,6 +60,18 @@
   (lambda (env succeed fail)
     (succeed (lookup-variable-value exp env) fail)))
 
+; variable definition
+; (it is assumed that internal definitions are scanned out)
+(define (analyze-definition exp)
+  (let ((var (definition-variable exp))
+        (vproc (analyze (definition-value exp))))
+    (lambda (env succeed fail)
+      (vproc env
+             (lambda (val fail2)
+               (define-variable! var val env)
+               (succeed 'ok fail2))
+             fail))))
+
 ; variable assignment
 (define (analyze-assignment exp)
   (let ((var (assignment-variable exp))
@@ -83,26 +88,6 @@
                             (set-variable-value!
                              var old-value env)
                             (fail2)))))
-             fail))))
-; *2* restores the old value of the variable
-; example where this is detremental:
-;(let ((x 1))
-;  (define (func y)
-;    (set! x (* y x))
-;    (+ y x))
-;  (amb (func 2) (func 3)))
-; the correct result is (amb 4 6)
-
-; variable definition
-; (it is assumed that internal definitions are scanned out)
-(define (analyze-definition exp)
-  (let ((var (definition-variable exp))
-        (vproc (analyze (definition-value exp))))
-    (lambda (env succeed fail)
-      (vproc env
-             (lambda (val fail2)
-               (define-variable! var val env)
-               (succeed 'ok fail2))
              fail))))
 
 (define (make-procedure parameters body-proc env)
@@ -353,4 +338,12 @@
            (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
-(#%provide (all-defined))
+;(if-fail (let ((x (an-element-of '(1 3 5))))
+;           (require (even? x))
+;           x)
+;         'all-odd)
+
+;(if-fail (let ((x (an-element-of '(1 3 5 8))))
+;           (require (even? x))
+;           x)
+;         'all-odd)

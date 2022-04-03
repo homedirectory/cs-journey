@@ -5,30 +5,42 @@
            "cond.scm" "env.scm" "let.scm" "and-or.scm"
            "amb.scm" "apply.scm")
 
-; We will construct the amb evaluator for nondeterministic Scheme by
-; modifying the analyzing evaluator. The difference between the interpretation
-; of ordinary Scheme and the interpretation of nondeterministic Scheme will be
-; entirely in the execution procedures.
-; Backtracking is implemented by passing 3 arguments to the execution procedures,
-; instead of 1 argument, that is environment, as for the ordinary evaluator.
-; The 3 arguments are: environment, success continuation, failure continuation.
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+(define (set!? exp)
+  (tagged-list? exp 'set!))
+(define (permanent-set!? exp)
+  (tagged-list? exp 'permanent-set!))
 
-; Success continuation
-; - is called in case the evaluation results in a value
-; - is a procedure of 2 arguments:
-;   - the value just obtained
-;   - another failure continuation to be used in case the obtained value
-;     leads to a failure
+(define (assignment? exp)
+  (or (set!? exp)
+      (permanent-set!? exp)))
 
-; Failure continuation
-; - is called in case of a dead end
-; - is a procedure of NO arguments
-
-; General form of an execution procedure:
-; (lambda (env succeed fail)
-;   ; succeed is (lambda (value fail) ...)
-;   ; fail is (lambda () ...)
-;   ...)
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze (assignment-value exp))))
+    (if (set!? exp)
+        (lambda (env succeed fail)
+          (vproc env
+                 (lambda (val fail2)
+                   ; *1*
+                   (let ((old-value (lookup-variable-value var env)))
+                     (set-variable-value! var val env)
+                     (succeed 'ok
+                              (lambda ()
+                                ; *2*
+                                (set-variable-value!
+                                 var old-value env)
+                                (fail2)))))
+                 fail))
+        (lambda (env succeed fail)
+          (vproc env
+                 (lambda (val fail2)
+                   ; *1*
+                   (let ((old-value (lookup-variable-value var env)))
+                     (set-variable-value! var val env)
+                     (succeed 'ok fail2)))
+                 fail)))))
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 (define (ambeval exp env succeed fail)
   ((analyze exp) env succeed fail))
@@ -66,32 +78,6 @@
 (define (analyze-variable exp)
   (lambda (env succeed fail)
     (succeed (lookup-variable-value exp env) fail)))
-
-; variable assignment
-(define (analyze-assignment exp)
-  (let ((var (assignment-variable exp))
-        (vproc (analyze (assignment-value exp))))
-    (lambda (env succeed fail)
-      (vproc env
-             (lambda (val fail2)
-               ; *1*
-               (let ((old-value (lookup-variable-value var env)))
-                 (set-variable-value! var val env)
-                 (succeed 'ok
-                          (lambda ()
-                            ; *2*
-                            (set-variable-value!
-                             var old-value env)
-                            (fail2)))))
-             fail))))
-; *2* restores the old value of the variable
-; example where this is detremental:
-;(let ((x 1))
-;  (define (func y)
-;    (set! x (* y x))
-;    (+ y x))
-;  (amb (func 2) (func 3)))
-; the correct result is (amb 4 6)
 
 ; variable definition
 ; (it is assumed that internal definitions are scanned out)
@@ -241,7 +227,6 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
-        (list 'even? even?)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -353,4 +338,10 @@
            (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
-(#%provide (all-defined))
+(ambeval-test '(define count 0) the-global-environment)
+
+;(let ((x (an-element-of '(a b c)))
+;      (y (an-element-of '(a b c))))
+;  (permanent-set! count (+ count 1))
+;  (require (not (eq? x y)))
+;  (list x y count))

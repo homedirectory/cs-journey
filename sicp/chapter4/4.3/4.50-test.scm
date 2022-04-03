@@ -5,36 +5,30 @@
            "cond.scm" "env.scm" "let.scm" "and-or.scm"
            "amb.scm" "apply.scm")
 
-; We will construct the amb evaluator for nondeterministic Scheme by
-; modifying the analyzing evaluator. The difference between the interpretation
-; of ordinary Scheme and the interpretation of nondeterministic Scheme will be
-; entirely in the execution procedures.
-; Backtracking is implemented by passing 3 arguments to the execution procedures,
-; instead of 1 argument, that is environment, as for the ordinary evaluator.
-; The 3 arguments are: environment, success continuation, failure continuation.
-
-; Success continuation
-; - is called in case the evaluation results in a value
-; - is a procedure of 2 arguments:
-;   - the value just obtained
-;   - another failure continuation to be used in case the obtained value
-;     leads to a failure
-
-; Failure continuation
-; - is called in case of a dead end
-; - is a procedure of NO arguments
-
-; General form of an execution procedure:
-; (lambda (env succeed fail)
-;   ; succeed is (lambda (value fail) ...)
-;   ; fail is (lambda () ...)
-;   ...)
-
 (define (ambeval exp env succeed fail)
   ((analyze exp) env succeed fail))
 
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+(define (ramb? exp) (tagged-list? exp 'ramb))
+(define (ramb-choices exp) (cdr exp))
+
+(define (analyze-ramb exp)
+  (let ((cprocs (map analyze (amb-choices exp))))
+    (lambda (env succeed fail)
+      (define (try-next choices)
+        (if (null? choices)
+            (fail)
+            (let ((r (random (length choices))))
+              ((list-ref r choices)
+               env
+               succeed
+               (lambda () (try-next (list-remove-at r choices)))))))
+      (try-next cprocs))))
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 (define (analyze exp)
-  (cond ((amb? exp) (analyze-amb exp))
+  (cond ((ramb? exp) (analyze-ramb exp))
+        ((amb? exp) (analyze-amb exp))
         ((self-evaluating? exp) (analyze-self-evaluating exp))
         ((quoted? exp) (analyze-quoted exp))
         ((variable? exp) (analyze-variable exp))
@@ -241,7 +235,6 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
-        (list 'even? even?)
         (list '+ +)
         (list '- -)
         (list '* *)

@@ -5,30 +5,59 @@
            "cond.scm" "env.scm" "let.scm" "and-or.scm"
            "amb.scm" "apply.scm")
 
-; We will construct the amb evaluator for nondeterministic Scheme by
-; modifying the analyzing evaluator. The difference between the interpretation
-; of ordinary Scheme and the interpretation of nondeterministic Scheme will be
-; entirely in the execution procedures.
-; Backtracking is implemented by passing 3 arguments to the execution procedures,
-; instead of 1 argument, that is environment, as for the ordinary evaluator.
-; The 3 arguments are: environment, success continuation, failure continuation.
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+; 4.52
+(define (if-fail? exp)
+  (tagged-list? exp 'if-fail))
+(define (if-fail-exp exp)
+  (cadr exp))
+(define (if-fail-alt exp)
+  (caddr exp))
 
-; Success continuation
-; - is called in case the evaluation results in a value
-; - is a procedure of 2 arguments:
-;   - the value just obtained
-;   - another failure continuation to be used in case the obtained value
-;     leads to a failure
+(define (analyze-if-fail exp)
+  (lambda (env succeed fail)
+    ((analyze (if-fail-exp exp))
+     env succeed 
+     (lambda ()
+       ((analyze (if-fail-alt exp))
+        env succeed fail)))))
 
-; Failure continuation
-; - is called in case of a dead end
-; - is a procedure of NO arguments
+; 4.51
+(define (set!? exp)
+  (tagged-list? exp 'set!))
+(define (permanent-set!? exp)
+  (tagged-list? exp 'permanent-set!))
 
-; General form of an execution procedure:
-; (lambda (env succeed fail)
-;   ; succeed is (lambda (value fail) ...)
-;   ; fail is (lambda () ...)
-;   ...)
+(define (assignment? exp)
+  (or (set!? exp)
+      (permanent-set!? exp)))
+
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze (assignment-value exp))))
+    (if (set!? exp)
+        (lambda (env succeed fail)
+          (vproc env
+                 (lambda (val fail2)
+                   ; *1*
+                   (let ((old-value (lookup-variable-value var env)))
+                     (set-variable-value! var val env)
+                     (succeed 'ok
+                              (lambda ()
+                                ; *2*
+                                (set-variable-value!
+                                 var old-value env)
+                                (fail2)))))
+                 fail))
+        (lambda (env succeed fail)
+          (vproc env
+                 (lambda (val fail2)
+                   ; *1*
+                   (let ((old-value (lookup-variable-value var env)))
+                     (set-variable-value! var val env)
+                     (succeed 'ok fail2)))
+                 fail)))))
+; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 (define (ambeval exp env succeed fail)
   ((analyze exp) env succeed fail))
@@ -41,6 +70,7 @@
         ((assignment? exp) (analyze-assignment exp))
         ((definition? exp) (analyze-definition exp))
         ((if? exp) (analyze-if exp))
+        ((if-fail? exp) (analyze-if-fail exp)) ; +++
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
@@ -66,32 +96,6 @@
 (define (analyze-variable exp)
   (lambda (env succeed fail)
     (succeed (lookup-variable-value exp env) fail)))
-
-; variable assignment
-(define (analyze-assignment exp)
-  (let ((var (assignment-variable exp))
-        (vproc (analyze (assignment-value exp))))
-    (lambda (env succeed fail)
-      (vproc env
-             (lambda (val fail2)
-               ; *1*
-               (let ((old-value (lookup-variable-value var env)))
-                 (set-variable-value! var val env)
-                 (succeed 'ok
-                          (lambda ()
-                            ; *2*
-                            (set-variable-value!
-                             var old-value env)
-                            (fail2)))))
-             fail))))
-; *2* restores the old value of the variable
-; example where this is detremental:
-;(let ((x 1))
-;  (define (func y)
-;    (set! x (* y x))
-;    (+ y x))
-;  (amb (func 2) (func 3)))
-; the correct result is (amb 4 6)
 
 ; variable definition
 ; (it is assumed that internal definitions are scanned out)
@@ -241,7 +245,7 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
-        (list 'even? even?)
+        (list 'even? even?) (list 'remainder remainder)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -353,4 +357,29 @@
            (lambda () 'fail)))
 
 ;-------------------------------------------------------------------------------
-(#%provide (all-defined))
+(map ambeval-definition
+     (list '(define (prime-sum-pair list1 list2)
+              (let ((a (an-element-of list1))
+                    (b (an-element-of list2)))
+                (require (prime? (+ a b)))
+                (list a b)))
+           '(define (square x) (* x x))
+           '(define (next x)
+              (cond ((= x 2) 3)
+                    (else (+ x 2))))
+           '(define (smallest-divisor n) (find-divisor n 2))
+           '(define (find-divisor n test-divisor)
+              (cond ((> (square test-divisor) n) n)
+                    ((divides? test-divisor n) test-divisor)
+                    (else (find-divisor n (next test-divisor)))))
+           '(define (divides? a b) (= (remainder b a) 0))
+           '(define (prime? n)
+              (= n (smallest-divisor n)))))
+
+;(let ((pairs '()))
+;  (if-fail
+;   (let ((p (prime-sum-pair '(1 3 5 8)
+;                            '(20 35 110))))
+;     (permanent-set! pairs (cons p pairs))
+;     (amb))
+;   pairs))

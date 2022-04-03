@@ -1,22 +1,21 @@
-#lang sicp
+(define (flatten items)
+  (cond ((null? items) '())
+        ((pair? items)
+         (let ((car-flat (flatten (car items)))
+               (cdr-flat (flatten (cdr items))))
+           (append car-flat cdr-flat)))
+        (else (list items))))
 
-(#%require "parse.scm" "../../helpers.scm")
-
-; Exercise 4.49: Alyssa P. Hacker is more interested in generating interesting
-; sentences than in parsing them. She reasons that by simply changing the
-; procedure parse-word so that it ignores the “input sentence” and instead
-; always succeeds and generates an appropriate word, we can use the programs
-; we had built for parsing to do generation instead. Implement Alyssa’s idea,
-; and show the first half-dozen or so sentences generated
+(define nouns '(noun student professor))
+(define verbs '(verb studies lectures))
+(define prepositions '(prep to with))
+(define articles '(article a))
+(define adverbs '(adverb slowly peacefully))
+(define adjectives '(adj large pretty))
 
 (define (parse-word word-list)
   (require (not (null? word-list)))
   (amb (car word-list) (parse-word (cdr word-list))))
-
-(define (generate-sentence noun-preps noun-adjs noun-prep-nouns
-                           verb-preps verb-advs verb-prep-nouns)
-  (list (parse-noun-phrase noun-preps noun-adjs noun-prep-nouns)
-        (parse-verb-phrase verb-preps verb-advs verb-prep-nouns)))
 
 (define (generate-sentence noun-preps noun-adjs
                            noun-prep-nouns noun-prep-adjs
@@ -34,16 +33,14 @@
   (generate-sentence 1 0 1 0
                      1 0 1 0))
 
-; all calls to parse-word must pass (cdr <word-list>) as an argument instead of
-; <word-list>, since first item in the list is the name of part of speech
-; (e.g. "noun", "article")
-
-(define (parse-prepositional-phrase noun-depth)
+(define (parse-prepositional-phrase noun-depth prep-noun-adj-depth)
   (list (parse-word (cdr prepositions))
-        (parse-noun-phrase (dec noun-depth) noun-depth)))
+        (parse-noun-phrase (dec noun-depth) prep-noun-adj-depth noun-depth prep-noun-adj-depth)))
 
 (define (parse-noun-phrase preps-depth adj-depth prep-noun-depth prep-noun-adj-depth)
   (define (maybe-extend noun-phrase preps-c)
+    (newline) (display "parse-noun-phrase: ")
+    (display "maybe-extend: ") (display noun-phrase) (display preps-c) (display preps-depth)
     (if (= 0 preps-depth)
         (amb noun-phrase)
         (begin
@@ -56,7 +53,6 @@
   (maybe-extend (parse-simple-noun-phrase adj-depth) 0))
 
 (define (parse-article adj-depth)
-  ; an article may be extended with adjectives
   (define (maybe-extend article adj-c)
     (require (<= adj-c adj-depth))
     (amb article
@@ -70,7 +66,6 @@
         (parse-word (cdr nouns))))
 
 (define (parse-verb adverb-depth)
-  ; a verb may be extended with adverbs
   (define (maybe-extend adverb adverb-c)
     (require (<= adverb-c adverb-depth))
     (amb adverb
@@ -81,6 +76,8 @@
 
 (define (parse-verb-phrase preps-depth adverb-depth prep-noun-depth prep-noun-adj-depth)
   (define (maybe-extend verb-phrase preps-c)
+    (newline) (display "parse-verb-phrase: ")
+    (display "maybe-extend: ") (display verb-phrase) (display preps-c) (display preps-depth)
     (if (= 0 preps-depth)
         (amb verb-phrase)
         (begin

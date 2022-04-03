@@ -118,6 +118,15 @@
         ((= n 0) (append items lst))
         (else (iter lst 0))))
 
+(define (list-remove-at n lst)
+  (define (iter l c)
+    (if (= c n)
+        (cdr l)
+        (cons (car l) (iter (cdr l) (inc c)))))
+  
+  (if (>= n (length lst))
+      (error "list-remove-at: n >= (length lst)")
+      (iter lst 0)))
 ;---------------------------------------------
  
 (#%provide (all-defined))

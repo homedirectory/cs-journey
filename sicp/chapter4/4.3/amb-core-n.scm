@@ -84,14 +84,6 @@
                              var old-value env)
                             (fail2)))))
              fail))))
-; *2* restores the old value of the variable
-; example where this is detremental:
-;(let ((x 1))
-;  (define (func y)
-;    (set! x (* y x))
-;    (+ y x))
-;  (amb (func 2) (func 3)))
-; the correct result is (amb 4 6)
 
 ; variable definition
 ; (it is assumed that internal definitions are scanned out)
@@ -241,7 +233,6 @@
         (list 'length length)
         (list 'member member) (list 'memq memq)
         (list 'abs abs) (list 'min min) (list 'max max)
-        (list 'even? even?)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -283,32 +274,48 @@
 (define input-prompt ";;; Amb-Eval input:")
 (define output-prompt ";;; Amb-Eval value:")
 
+(define (try-again-multi? input)
+  (and (pair? input) (eq? 'try-again (car input))))
+(define (try-again-n input)
+  (cadr input))
+
 (define (driver-loop)
-  (define (internal-loop try-again)
+  (define (no-current-problem)
+    (internal-loop
+     (lambda ()
+       (newline) (display ";;; There is no current problem")
+       (driver-loop))
+     #f 0))
+  (define (internal-loop try-again is-problem? try-n)
     (prompt-for-input input-prompt)
     (let ((input (read)))
-      (if (eq? input 'try-again)
-          (try-again)
-          (begin
-            (newline) (display ";;; Starting a new problem ")
-            (ambeval
-             input
-             the-global-environment
-             ;; ambeval success
-             (lambda (val next-alternative)
-               (announce-output output-prompt)
-               (user-print val)
-               (internal-loop next-alternative))
-             ;; ambeval failure
-             (lambda ()
-               (announce-output
-                ";;; There are no more values of")
-               (user-print input)
-               (driver-loop)))))))
-  (internal-loop
-   (lambda ()
-     (newline) (display ";;; There is no current problem")
-     (driver-loop))))
+      (cond ((> try-n 0)
+             (if is-problem?
+                 (try-again)
+                 (no-current-problem)))
+            ((eq? input 'try-again)
+             (try-again))
+            ((try-again-multi? input)
+             (if is-problem?
+                 (internal-loop try-again is-problem? (try-again-n input))
+                 (no-current-problem)))
+            (else (begin
+                    (newline) (display ";;; Starting a new problem ")
+                    (ambeval
+                     input
+                     the-global-environment
+                     ;; ambeval success
+                     (lambda (val next-alternative)
+                       (announce-output output-prompt)
+                       (user-print val)
+                       (internal-loop next-alternative #t (dec try-n)))
+                     ;; ambeval failure
+                     (lambda ()
+                       (announce-output
+                        ";;; There are no more values of")
+                       (user-print input)
+                       (driver-loop))))))))
+  (no-current-problem))
 
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
@@ -325,26 +332,41 @@
 ; == Compound procedures to be installed inside the Amb evaluator ==
 (define installed-procedures
   (list
-   '(define (require p) (if (not p) (amb)))
-   '(define (an-element-of items)
-      (require (not (null? items)))
-      (amb (car items) (an-element-of (cdr items))))
-   '(define (an-integer-starting-from n)
-      (amb n (an-integer-starting-from (+ n 1))))
-   '(define (list-ref n lst)
-      (define (iter l c)
-        (if (= c n)
-            (car l)
-            (iter (cdr l) (inc c))))
-      (iter lst 0))
+   ; (define (require p) (if (not p) (amb)))
+   (make-definition (list 'require 'p)
+                    (make-if (make-application 'not (list 'p))
+                             (make-application 'amb '())
+                             'true))
+   ; (define (an-integer-starting-from n)
+   ;   (amb n (an-integer-starting-from (+ n 1))))
+   (make-definition (list 'an-integer-starting-from 'n)
+                    (make-application 'amb
+                                      (list
+                                       'n
+                                       (make-application
+                                        'an-integer-starting-from
+                                        (list (make-application '+ (list 'n 1)))))))
+   ;   (define (list-ref n lst)
+   ;     (define (iter l c)
+   ;       (if (= c n)
+   ;           (car l)
+   ;           (iter (cdr l) (inc c))))
+   ;     (iter lst 0))
+   (make-definition (list 'list-ref 'n 'lst)
+                    (make-definition (list 'iter 'l 'c)
+                                     (make-if (make-application '= (list 'c 'n))
+                                              (make-application 'car (list 'l))
+                                              (make-application 'iter
+                                                                (list
+                                                                 (make-application 'cdr (list 'l))
+                                                                 (make-application 'inc (list 'c))))))
+                    (make-application 'iter (list 'lst 0)))
    ))
 
-(define (ambeval-definition def)
-  (ambeval def the-global-environment
-           (lambda (val fail) 'ok)
-           (lambda () 'fail)))
-
-(map ambeval-definition installed-procedures)
+(map (lambda (p) (ambeval p the-global-environment
+                          (lambda (val fail) 'ok)
+                          (lambda () 'fail)))
+     installed-procedures)
 
 ; == TEST ==
 (define (ambeval-test exp env)
